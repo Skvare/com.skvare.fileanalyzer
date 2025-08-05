@@ -250,7 +250,7 @@
 
   // Test file scan functionality
   function testFileScan() {
-    var btn = $('#testScanBtn');
+    var btn = CRM.$('#testScanBtn');
     btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Testing...{/ts}{literal}');
 
     CRM.api3('FileAnalyzer', 'getstats')
@@ -275,7 +275,7 @@
 
   // Run scheduled job manually
   function runScheduledJob() {
-    var btn = $('#runJobBtn');
+    var btn = CRM.$('#runJobBtn');
     btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Running...{/ts}{literal}');
 
     CRM.api3('FileAnalyzer', 'scan', { force_scan: 1 })
@@ -304,7 +304,7 @@
       return;
     }
 
-    var btn = $('#clearBackupsBtn');
+    var btn = CRM.$('#clearBackupsBtn');
     btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Clearing...{/ts}{literal}');
 
     // This would need a custom API endpoint
@@ -315,8 +315,8 @@
 
   // Show test results
   function showTestResults(result) {
-    var resultsDiv = $('#testResults');
-    var contentDiv = $('#testResultsContent');
+    var resultsDiv = CRM.$('#testResults');
+    var contentDiv = CRM.$('#testResultsContent');
 
     var html = '<div class="result-item ' + (result.success ? 'success' : 'error') + '">';
     html += '<div class="result-status">';
@@ -352,20 +352,20 @@
       return;
     }
 
-    $('#fileanalyzer_auto_delete_fileanalyzer_auto_delete').prop('checked', false).trigger('change');
-    $('#fileanalyzer_auto_delete_days').val('90');
-    $('#fileanalyzer_backup_before_delete').prop('checked', true);
-    $('#fileanalyzer_excluded_extensions').val('tmp,log,cache');
+    CRM.$('#fileanalyzer_auto_delete_fileanalyzer_auto_delete').prop('checked', false).trigger('change');
+    CRM.$('#fileanalyzer_auto_delete_days').val('90');
+    CRM.$('#fileanalyzer_backup_before_delete').prop('checked', true);
+    CRM.$('#fileanalyzer_excluded_extensions').val('tmp,log,cache');
   }
 
   // Show help overlay
   function showHelp() {
-    $('#helpOverlay').show();
+    CRM.$('#helpOverlay').show();
   }
 
   // Close help overlay
   function closeHelp() {
-    $('#helpOverlay').hide();
+    CRM.$('#helpOverlay').hide();
   }
   {/literal}
 </script>

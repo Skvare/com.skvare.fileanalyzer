@@ -21,6 +21,9 @@
           <button onclick="refreshData()" class="button" id="refreshBtn">
             <i class="crm-i fa-refresh"></i> {ts}Refresh{/ts}
           </button>
+          <a href="{crmURL p='civicrm/admin/job' q='reset=1'}" class="button">
+            <i class="crm-i fa-cog"></i> {ts}Run Scheduled Job{/ts}
+          </a>
         </div>
       </div>
     </div>
