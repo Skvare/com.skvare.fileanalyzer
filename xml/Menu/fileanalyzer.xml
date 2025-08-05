@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<menu>
+  <item>
+    <path>civicrm/file-analyzer/dashboard</path>
+    <page_callback>CRM_Fileanalyzer_Page_Dashboard</page_callback>
+    <title>File Analyzer Dashboard</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/admin/setting/fileanalyzer</path>
+    <page_callback>CRM_Fileanalyzer_Form_Settings</page_callback>
+    <title>File Analyzer Settings</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+</menu>
