@@ -154,7 +154,7 @@
                     </td>
                     <td>
                       <div class="file-info">
-                        <strong class="filename">{$file.filename}</strong>
+                        <strong class="filename">{$file.filenameOnly}</strong>
                         <div class="file-path">{$file.path}</div>
                       </div>
                     </td>

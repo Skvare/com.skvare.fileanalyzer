@@ -44,7 +44,7 @@ class CRM_FileAnalyzer_Page_AJAX extends CRM_Core_Page {
     }
 
     // Double-check that file is abandoned
-    $fileAnalyzer = new CRM_FileAnalyzer_Page_Dashboard();
+    $fileAnalyzer = new CRM_FileAnalyzer_API_FileAnalysis();
     if ($fileAnalyzer->isFileInUse(basename($filename))) {
       CRM_Utils_JSON::output(['error' => 'File is in use and cannot be deleted']);
       return;

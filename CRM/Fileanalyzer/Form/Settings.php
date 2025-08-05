@@ -6,7 +6,6 @@ use CRM_Fileanalyzer_ExtensionUtil as E;
 class CRM_FileAnalyzer_Form_Settings extends CRM_Admin_Form_Setting {
 
   protected $_settings = [
-    'fileanalyzer_scan_interval' => 'FileAnalyzer Setting',
     'fileanalyzer_auto_delete' => 'FileAnalyzer Setting',
     'fileanalyzer_auto_delete_days' => 'FileAnalyzer Setting',
     'fileanalyzer_backup_before_delete' => 'FileAnalyzer Setting',
@@ -34,7 +33,6 @@ class CRM_FileAnalyzer_Form_Settings extends CRM_Admin_Form_Setting {
         <h3>File Analyzer Configuration</h3>
         <p>Configure how the File Analyzer extension monitors and manages your CiviCRM files.</p>
         <ul>
-          <li><strong>Scan Interval:</strong> How frequently the system checks for abandoned files</li>
           <li><strong>Auto-delete:</strong> Enable automatic cleanup of abandoned files</li>
           <li><strong>Backup:</strong> Create backups before deletion (highly recommended)</li>
           <li><strong>Excluded Extensions:</strong> File types to ignore during analysis</li>
@@ -45,7 +43,7 @@ class CRM_FileAnalyzer_Form_Settings extends CRM_Admin_Form_Setting {
     // Add JavaScript for conditional fields
     CRM_Core_Resources::singleton()->addScript('
       CRM.$(function($) {
-        $("#fileanalyzer_auto_delete").change(function() {
+        $("#fileanalyzer_auto_delete_fileanalyzer_auto_delete").change(function() {
           if ($(this).is(":checked")) {
             $("#fileanalyzer_auto_delete_days").closest(".crm-section").show();
           } else {

@@ -45,7 +45,6 @@ class CRM_Fileanalyzer_Upgrader extends CRM_Extension_Upgrader_Base {
    */
   private function setDefaultSettings() {
     $settings = [
-      'fileanalyzer_scan_interval' => 24,
       'fileanalyzer_auto_delete' => 0,
       'fileanalyzer_auto_delete_days' => 90,
       'fileanalyzer_backup_before_delete' => 1,

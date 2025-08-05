@@ -2,27 +2,9 @@
 /**
  * FileAnalyzer settings
  *
- * This file defines the settings for the FileAnalyzer extension.
- * It includes options for scan intervals, auto-deletion, and file exclusions.
- 
+ * This file defines the settings for the FileAnalyzer extension. 
  */
 return [
-  'fileanalyzer_scan_interval' => [
-    'name' => 'fileanalyzer_scan_interval',
-    'type' => 'Integer',
-    'default' => 24,
-    'add' => '5.0',
-    'title' => ts('File Scan Interval (hours)'),
-    'description' => ts('How often to automatically scan for abandoned files'),
-    'is_domain' => 1,
-    'is_contact' => 0,
-    'settings_pages' => ['fileanalyzer' => ['weight' => 10]],
-    'html_type' => 'number',
-    'html_attributes' => [
-      'min' => 1,
-      'max' => 168, // 1 week
-    ],
-  ],
   'fileanalyzer_auto_delete' => [
     'name' => 'fileanalyzer_auto_delete',
     'type' => 'Boolean',

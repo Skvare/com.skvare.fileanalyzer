@@ -10,7 +10,6 @@ use CRM_Fileanalyzer_ExtensionUtil as E;
  * @see https://docs.civicrm.org/dev/en/latest/framework/api-architecture/
  */
 function _civicrm_api3_file_analyzer_Getstats_spec(&$spec) {
-  $spec['magicword']['api.required'] = 1;
 }
 
 /**
@@ -27,20 +26,15 @@ function _civicrm_api3_file_analyzer_Getstats_spec(&$spec) {
  */
 function civicrm_api3_file_analyzer_Getstats($params) {
   try {
-    $dashboard = new CRM_FileAnalyzer_Page_Dashboard();
-    $fileData = $dashboard->getFileAnalysisData();
-    $abandonedFiles = $dashboard->getAbandonedFiles();
-    $directoryStats = $dashboard->getDirectoryStats();
-
+    $scanResults = CRM_FileAnalyzer_API_FileAnalysis::getLatestScanResults();
+    $abandonedFiles = CRM_FileAnalyzer_API_FileAnalysis::getAbandonedFilesFromJson();
     $stats = [
-      'total_files' => $directoryStats['totalFiles'],
-      'total_size' => $directoryStats['totalSize'],
+      'total_files' => $scanResults['directoryStats']['totalFiles'],
+      'total_size' => $scanResults['directoryStats']['totalSize'],
       'abandoned_count' => count($abandonedFiles),
       'abandoned_size' => array_sum(array_column($abandonedFiles, 'size')),
-      'oldest_file' => $directoryStats['oldestFile'],
-      'newest_file' => $directoryStats['newestFile'],
-      'file_types' => $fileData['fileTypes'],
-      'monthly_data' => $fileData['monthly'],
+      'file_types' => $scanResults['fileAnalysis']['fileTypes'],
+      'monthly_data' => $scanResults['fileAnalysis']['monthly'],
     ];
 
     return civicrm_api3_create_success($stats, $params, 'FileAnalyzer', 'getstats');

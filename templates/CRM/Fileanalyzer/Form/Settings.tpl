@@ -33,20 +33,9 @@
         </div>
 
         <div class="crm-section">
-          <div class="label">{$form.fileanalyzer_scan_interval.label}</div>
-          <div class="content">
-            {$form.fileanalyzer_scan_interval.html}
-            <div class="description">
-              {ts}How often the scheduled job should run to scan for abandoned files. Recommended: 24 hours for most installations.{/ts}
-            </div>
-          </div>
-          <div class="clear"></div>
-        </div>
-
-        <div class="crm-section">
           <div class="label">{$form.fileanalyzer_excluded_extensions.label}</div>
           <div class="content">
-            {$form.fileanalyzer_excluded_extensions.html}
+            {$form.fileanalyzer_excluded_extensions.html|crmAddClass:huge40}
             <div class="description">
               {ts}Comma-separated list of file extensions to exclude from analysis (e.g., tmp,log,cache).{/ts}
             </div>
@@ -214,9 +203,6 @@
       </button>
     </div>
     <div class="help-body">
-      <h4>{ts}Scan Interval{/ts}</h4>
-      <p>{ts}Controls how frequently the system checks for abandoned files. Lower values provide more frequent monitoring but may impact performance on large installations.{/ts}</p>
-
       <h4>{ts}Auto-Delete{/ts}</h4>
       <p>{ts}When enabled, files that have been abandoned for longer than the specified period will be automatically deleted. Use with caution and ensure backups are enabled.{/ts}</p>
 
@@ -238,7 +224,7 @@
   {literal}
   CRM.$(function($) {
     // Toggle auto-delete dependent fields
-    $('#fileanalyzer_auto_delete').change(function() {
+    $('#fileanalyzer_auto_delete_fileanalyzer_auto_delete').change(function() {
       if ($(this).is(':checked')) {
         $('.auto-delete-dependent').show();
         $('#autoDeleteWarning').show();
@@ -250,16 +236,9 @@
 
     // Form validation
     $('form').submit(function(e) {
-      var scanInterval = parseInt($('#fileanalyzer_scan_interval').val());
       var autoDeleteDays = parseInt($('#fileanalyzer_auto_delete_days').val());
 
-      if (scanInterval < 1 || scanInterval > 168) {
-        CRM.alert('{/literal}{ts escape="js"}Scan interval must be between 1 and 168 hours.{/ts}{literal}', '{/literal}{ts escape="js"}Invalid Input{/ts}{literal}', 'error');
-        e.preventDefault();
-        return false;
-      }
-
-      if ($('#fileanalyzer_auto_delete').is(':checked') && (autoDeleteDays < 1 || autoDeleteDays > 365)) {
+      if ($('#fileanalyzer_auto_delete_fileanalyzer_auto_delete').is(':checked') && (autoDeleteDays < 1 || autoDeleteDays > 365)) {
         CRM.alert('{/literal}{ts escape="js"}Auto-delete days must be between 1 and 365.{/ts}{literal}', '{/literal}{ts escape="js"}Invalid Input{/ts}{literal}', 'error');
         e.preventDefault();
         return false;
@@ -373,8 +352,7 @@
       return;
     }
 
-    $('#fileanalyzer_scan_interval').val('24');
-    $('#fileanalyzer_auto_delete').prop('checked', false).trigger('change');
+    $('#fileanalyzer_auto_delete_fileanalyzer_auto_delete').prop('checked', false).trigger('change');
     $('#fileanalyzer_auto_delete_days').val('90');
     $('#fileanalyzer_backup_before_delete').prop('checked', true);
     $('#fileanalyzer_excluded_extensions').val('tmp,log,cache');
