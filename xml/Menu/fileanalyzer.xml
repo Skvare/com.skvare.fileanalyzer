@@ -12,4 +12,10 @@
     <title>File Analyzer Settings</title>
     <access_arguments>access CiviCRM</access_arguments>
   </item>
+  <item>
+    <path>civicrm/ajax/file-analyzer</path>
+    <page_callback>CRM_FileAnalyzer_Page_AJAX</page_callback>
+    <title>File Analyzer Settings</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
 </menu>

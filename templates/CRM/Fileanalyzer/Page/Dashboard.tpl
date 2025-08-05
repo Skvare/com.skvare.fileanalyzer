@@ -173,10 +173,10 @@
                     </td>
                     <td class="file-actions">
                       <div class="action-buttons">
-                        <button class="button small" onclick="showFileInfo('{$file.filename}')" title="{ts}View Details{/ts}">
+                        <button class="button small" onclick="showFileInfo('{$file.filenameOnly}')" title="{ts}View Details{/ts}">
                           <i class="crm-i fa-info"></i>
                         </button>
-                        <button class="button small danger" onclick="deleteFile('{$file.filename}')" title="{ts}Delete File{/ts}">
+                        <button class="button small danger" onclick="deleteFile('{$file.filenameOnly}')" title="{ts}Delete File{/ts}">
                           <i class="crm-i fa-trash"></i>
                         </button>
                       </div>

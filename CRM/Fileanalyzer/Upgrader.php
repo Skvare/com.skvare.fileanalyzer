@@ -24,7 +24,7 @@ class CRM_Fileanalyzer_Upgrader extends CRM_Extension_Upgrader_Base {
    * Create necessary directories
    */
   private function createDirectories() {
-    $backupDir = CRM_Core_Config::singleton()->configAndLogDir . '/file_analyzer_backups';
+    $backupDir = CRM_Core_Config::singleton()->customFileUploadDir . '/file_analyzer_backups';
 
     if (!is_dir($backupDir)) {
       if (!mkdir($backupDir, 0755, TRUE)) {

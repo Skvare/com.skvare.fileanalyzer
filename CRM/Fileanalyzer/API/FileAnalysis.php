@@ -1,5 +1,6 @@
 <?php
 
+use CRM_Fileanalyzer_ExtensionUtil as E;
 
 class CRM_FileAnalyzer_API_FileAnalysis {
 
@@ -73,7 +74,7 @@ class CRM_FileAnalyzer_API_FileAnalysis {
    * Create backup of file before deletion
    */
   private static function backupFile($filePath) {
-    $backupDir = CRM_Core_Config::singleton()->configAndLogDir . '/file_analyzer_backups';
+    $backupDir = CRM_Core_Config::singleton()->customFileUploadDir . '/file_analyzer_backups';
 
     if (!is_dir($backupDir)) {
       mkdir($backupDir, 0755, TRUE);
@@ -105,7 +106,7 @@ class CRM_FileAnalyzer_API_FileAnalysis {
    * Create necessary directories
    */
   private function createDirectories() {
-    $backupDir = CRM_Core_Config::singleton()->configAndLogDir . '/file_analyzer_backups';
+    $backupDir = CRM_Core_Config::singleton()->customFileUploadDir . '/file_analyzer_backups';
 
     if (!is_dir($backupDir)) {
       if (!mkdir($backupDir, 0755, TRUE)) {

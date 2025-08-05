@@ -1,7 +1,6 @@
 /* css/dashboard.css - Dashboard Styles */
 
 .file-analyzer-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 2rem;
   border-radius: 8px;
@@ -35,7 +34,6 @@
 }
 
 .header-actions .button {
-  background: rgba(255,255,255,0.2);
   color: white;
   border: 1px solid rgba(255,255,255,0.3);
   padding: 0.5rem 1rem;
@@ -79,6 +77,8 @@
 }
 
 .stat-card.warning {
+  background-image : unset !important;
+  background: white !important;
   border-left-color: #f59e0b;
 }
 
@@ -154,7 +154,7 @@
 }
 
 .chart-controls select {
-  padding: 0.5rem;
+  padding: 0.3rem;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 0.875rem;

@@ -42,14 +42,12 @@ class CRM_FileAnalyzer_Page_Dashboard extends CRM_Core_Page {
   public function getFileAnalysisData() {
     $customPath = CRM_Core_Config::singleton()->customFileUploadDir;
     $files = $this->scanDirectory($customPath);
-
     $monthlyData = [];
     $fileTypeData = [];
 
     foreach ($files as $file) {
-      $filePath = $customPath . '/' . $file;
-      if (is_file($filePath)) {
-        $stat = stat($filePath);
+      if (str_contains($file, $customPath) && is_file($file)) {
+        $stat = stat($file);
         $month = date('Y-m', $stat['mtime']);
         $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
         $size = $stat['size'];
@@ -69,7 +67,6 @@ class CRM_FileAnalyzer_Page_Dashboard extends CRM_Core_Page {
         $fileTypeData[$extension]['size'] += $size;
       }
     }
-
     // Sort monthly data
     ksort($monthlyData);
 
@@ -88,19 +85,19 @@ class CRM_FileAnalyzer_Page_Dashboard extends CRM_Core_Page {
     $abandonedFiles = [];
 
     foreach ($files as $file) {
-      $filePath = $customPath . '/' . $file;
-      if (is_file($filePath)) {
+      if (str_contains($file, $customPath) && is_file($file)) {
         // Check if file is referenced in civicrm_file table
         $fileInUse = $this->isFileInUse($file);
 
         if (!$fileInUse) {
-          $stat = stat($filePath);
+          $stat = stat($file);
           $abandonedFiles[] = [
             'filename' => $file,
+            'filenameOnly' => basename($file),
             'size' => $stat['size'],
             'modified' => date('Y-m-d H:i:s', $stat['mtime']),
             'extension' => strtolower(pathinfo($file, PATHINFO_EXTENSION)),
-            'path' => $filePath,
+            'path' => $file,
           ];
         }
       }
@@ -113,6 +110,7 @@ class CRM_FileAnalyzer_Page_Dashboard extends CRM_Core_Page {
    * Check if a file is referenced in CiviCRM database
    */
   public function isFileInUse($filename) {
+    $filename = basename($filename);
     // Check civicrm_file table
     $query = "
       SELECT COUNT(*) as count
@@ -178,9 +176,8 @@ class CRM_FileAnalyzer_Page_Dashboard extends CRM_Core_Page {
     $newestFile = NULL;
 
     foreach ($files as $file) {
-      $filePath = $customPath . '/' . $file;
-      if (is_file($filePath)) {
-        $stat = stat($filePath);
+      if (str_contains($file, $customPath) && is_file($file)) {
+        $stat = stat($file);
         $totalSize += $stat['size'];
         $totalFiles++;
 

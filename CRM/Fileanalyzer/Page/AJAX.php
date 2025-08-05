@@ -6,7 +6,7 @@
 class CRM_FileAnalyzer_Page_AJAX extends CRM_Core_Page {
 
   public function run() {
-    $action = CRM_Utils_Request::retrieve('action', 'String');
+    $action = CRM_Utils_Request::retrieve('operation', 'String');
 
     switch ($action) {
       case 'deleteFile':
@@ -63,7 +63,7 @@ class CRM_FileAnalyzer_Page_AJAX extends CRM_Core_Page {
    */
   private function getFileInfo() {
     $filename = CRM_Utils_Request::retrieve('filename', 'String');
-
+    CRM_Core_Error::debug_log_message("Getting info for file: $filename");
     if (!$filename) {
       CRM_Utils_JSON::output(['error' => 'No filename provided']);
       return;

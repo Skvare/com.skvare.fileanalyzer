@@ -375,7 +375,7 @@
       url: FileAnalyzerData.ajaxUrl,
       type: 'POST',
       data: {
-        action: 'deleteFile',
+        operation: 'deleteFile',
         filename: filename
       },
       dataType: 'json',
@@ -430,7 +430,7 @@
         url: FileAnalyzerData.ajaxUrl,
         type: 'POST',
         data: {
-          action: 'deleteFile',
+          operation: 'deleteFile',
           filename: filename
         },
         dataType: 'json'
@@ -477,7 +477,7 @@
       url: FileAnalyzerData.ajaxUrl,
       type: 'POST',
       data: {
-        action: 'getFileInfo',
+        operation: 'getFileInfo',
         filename: filename
       },
       dataType: 'json',

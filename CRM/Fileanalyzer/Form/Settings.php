@@ -19,6 +19,7 @@ class CRM_FileAnalyzer_Form_Settings extends CRM_Admin_Form_Setting {
       ->addStyleFile('com.skvare.fileanalyzer', 'css/settings.css');
     $config = CRM_Core_Config::singleton();
     $this->assign('customFileUploadDir', $config->customFileUploadDir);
+    $this->assignTemplateVars();
     parent::preProcess();
   }
 
@@ -64,4 +65,99 @@ class CRM_FileAnalyzer_Form_Settings extends CRM_Admin_Form_Setting {
       'success'
     );
   }
+
+  /**
+   * Assign template variables.
+   */
+  private function assignTemplateVars() {
+    // Directory writable check
+    $backupPath = CRM_Core_Config::singleton()->customFileUploadDir . 'file_analyzer_backups';
+    if (!is_dir($backupPath)) {
+      if (!mkdir($backupPath, 0755, TRUE)) {
+        CRM_Core_Error::debug_log_message('FileAnalyzer: Failed to create backup directory');
+      }
+    }
+    //$backupDir = CRM_Core_Config::singleton()->configAndLogDir .
+    // '/file_analyzer_backups'
+    $this->assign('dirWritable', is_writable($backupPath));
+
+    // Backup path
+    $this->assign('backupPath', $backupPath);
+
+    // Last scan information
+    $lastScan = $this->getLastScanInfo();
+    $this->assign('lastScan', $lastScan);
+
+    // Scheduled job status
+    $scheduledJobActive = $this->getScheduledJobStatus();
+    $this->assign('scheduledJobActive', $scheduledJobActive);
+
+    // PHP memory limit
+    $phpMemoryLimit = $this->getPhpMemoryLimit();
+    $this->assign('phpMemoryLimit', $phpMemoryLimit);
+  }
+
+  /**
+   * Get last scan information.
+   *
+   * @return string|void
+   */
+  private function getLastScanInfo() {
+    try {
+      // Query the database for last scan info
+      $sql = "SELECT last_run as last_scan_date
+              FROM civicrm_job j
+              WHERE api_entity = 'FileAnalyzer'
+              AND api_action = 'scan'
+              AND is_active = 1";
+
+      $lastRunDate = CRM_Core_DAO::singleValueQuery($sql);
+      return $lastRunDate ? date('Y-m-d H:i:s', strtotime($lastRunDate)) : ts('Never');
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message('FileAnalyzer: Error getting last scan info - ' . $e->getMessage());
+    }
+  }
+
+  /**
+   * Get scheduled job status.
+   *
+   * @return bool
+   */
+  private function getScheduledJobStatus() {
+    try {
+      // Check if the scheduled job exists and is active
+      $sql = "SELECT is_active FROM civicrm_job
+              WHERE api_entity = 'FileAnalyzer'
+              AND api_action = 'scan'
+              LIMIT 1";
+
+      $dao = CRM_Core_DAO::executeQuery($sql);
+
+      if ($dao->fetch()) {
+        return (bool)$dao->is_active;
+      }
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message('FileAnalyzer: Error getting scheduled job status - ' . $e->getMessage());
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Get PHP memory limit.
+   *
+   * @return string
+   */
+  private function getPhpMemoryLimit() {
+    $memoryLimit = ini_get('memory_limit');
+
+    if ($memoryLimit === FALSE || $memoryLimit == -1) {
+      return ts('Unlimited');
+    }
+
+    return $memoryLimit;
+  }
+
 }
