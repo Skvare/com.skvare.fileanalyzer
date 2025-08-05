@@ -112,7 +112,7 @@ class CRM_FileAnalyzer_Page_Dashboard extends CRM_Core_Page {
   /**
    * Check if a file is referenced in CiviCRM database
    */
-  private function isFileInUse($filename) {
+  public function isFileInUse($filename) {
     // Check civicrm_file table
     $query = "
       SELECT COUNT(*) as count
