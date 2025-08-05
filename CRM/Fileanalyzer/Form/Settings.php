@@ -6,12 +6,21 @@ use CRM_Fileanalyzer_ExtensionUtil as E;
 class CRM_FileAnalyzer_Form_Settings extends CRM_Admin_Form_Setting {
 
   protected $_settings = [
-    'fileanalyzer_scan_interval',
-    'fileanalyzer_auto_delete',
-    'fileanalyzer_auto_delete_days',
-    'fileanalyzer_backup_before_delete',
-    'fileanalyzer_excluded_extensions',
+    'fileanalyzer_scan_interval' => 'FileAnalyzer Setting',
+    'fileanalyzer_auto_delete' => 'FileAnalyzer Setting',
+    'fileanalyzer_auto_delete_days' => 'FileAnalyzer Setting',
+    'fileanalyzer_backup_before_delete' => 'FileAnalyzer Setting',
+    'fileanalyzer_excluded_extensions' => 'FileAnalyzer Setting',
   ];
+
+  public function preProcess() {
+    // Add CSS and JS resources
+    CRM_Core_Resources::singleton()
+      ->addStyleFile('com.skvare.fileanalyzer', 'css/settings.css');
+    $config = CRM_Core_Config::singleton();
+    $this->assign('customFileUploadDir', $config->customFileUploadDir);
+    parent::preProcess();
+  }
 
   public function buildQuickForm() {
     CRM_Utils_System::setTitle(ts('File Analyzer Settings'));

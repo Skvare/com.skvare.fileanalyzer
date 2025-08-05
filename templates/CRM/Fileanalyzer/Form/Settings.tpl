@@ -6,8 +6,6 @@
  +--------------------------------------------------------------------+
 *}
 
-{crmStyle ext=com.skvare.fileanalyzer file=css/settings.css}
-
 <div class="crm-container">
   <div class="crm-block crm-form-block crm-fileanalyzer-settings-form-block">
 
@@ -128,7 +126,7 @@
           <div class="info-grid">
             <div class="info-item">
               <label>{ts}Custom File Directory:{/ts}</label>
-              <span class="value">{$customFileDir}</span>
+              <span class="value">{$customFileUploadDir}</span>
             </div>
             <div class="info-item">
               <label>{ts}Directory Writable:{/ts}</label>
