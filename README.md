@@ -85,7 +85,7 @@ CRM_Fileanalyzer_Page_Dashboard::run()
 1. **Download the extension:**
    ```bash
    cd /path/to/civicrm/extensions
-   git clone https://github.com/sunilpawar/fileanalyzer.git
+   git clone https://github.com/skvare/com.skvare.fileanalyzer.git
    ```
 
 2. **Install via CiviCRM:**
@@ -168,8 +168,8 @@ The extension checks multiple sources to determine if a file is in use:
 - Deleted files are backed up before removal
 
 ### Permissions Required
-- **Access File Analyzer**: View dashboard and reports
-- **Administer File Analyzer**: Configure settings and trigger scans
+- **CiviCRM Administer**: View dashboard and reports
+- **CiviCRM Administer**: Configure settings and trigger scans
 
 ## Troubleshooting
 
@@ -203,7 +203,7 @@ This extension is licensed under [AGPL-3.0](LICENSE.txt).
 
 ## Support
 
-- **Issues**: Report bugs and feature requests on [GitHub Issues](https://github.com/sunilpawar/fileanalyzer/issues)
+- **Issues**: Report bugs and feature requests on [GitHub Issues](https://github.com/skvare/com.skvare.fileanalyzer/issues)
 - **Documentation**: [CiviCRM Extension Documentation](https://docs.civicrm.org/dev/en/latest/extensions/)
 - **Community**: [CiviCRM Stack Exchange](https://civicrm.stackexchange.com/)
 
