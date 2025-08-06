@@ -3,7 +3,7 @@
 /**
  * AJAX Handler for file operations
  */
-class CRM_FileAnalyzer_Page_AJAX extends CRM_Core_Page {
+class CRM_Fileanalyzer_Page_AJAX extends CRM_Core_Page {
 
   public function run() {
     $action = CRM_Utils_Request::retrieve('operation', 'String');
@@ -44,7 +44,7 @@ class CRM_FileAnalyzer_Page_AJAX extends CRM_Core_Page {
     }
 
     // Double-check that file is abandoned
-    $fileAnalyzer = new CRM_FileAnalyzer_API_FileAnalysis();
+    $fileAnalyzer = new CRM_Fileanalyzer_API_FileAnalysis();
     if ($fileAnalyzer->isFileInUse(basename($filename))) {
       CRM_Utils_JSON::output(['error' => 'File is in use and cannot be deleted']);
       return;

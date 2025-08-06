@@ -26,8 +26,8 @@ function _civicrm_api3_file_analyzer_Getstats_spec(&$spec) {
  */
 function civicrm_api3_file_analyzer_Getstats($params) {
   try {
-    $scanResults = CRM_FileAnalyzer_API_FileAnalysis::getLatestScanResults();
-    $abandonedFiles = CRM_FileAnalyzer_API_FileAnalysis::getAbandonedFilesFromJson();
+    $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults();
+    $abandonedFiles = CRM_Fileanalyzer_API_FileAnalysis::getAbandonedFilesFromJson();
     $stats = [
       'total_files' => $scanResults['directoryStats']['totalFiles'],
       'total_size' => $scanResults['directoryStats']['totalSize'],

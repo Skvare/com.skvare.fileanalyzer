@@ -52,7 +52,7 @@ The File Analyzer extension helps CiviCRM administrators monitor and manage file
 
 ### Scheduled Scanning Process
 ```
-CRM_FileAnalyzer_API_FileAnalysis::scheduledScan()
+CRM_Fileanalyzer_API_FileAnalysis::scheduledScan()
     ↓
 1. Scan custom file upload directory recursively
 2. Check each file against database references
@@ -66,7 +66,7 @@ CRM_FileAnalyzer_API_FileAnalysis::scheduledScan()
 
 ### Dashboard Display Process
 ```
-CRM_FileAnalyzer_Page_Dashboard::run()
+CRM_Fileanalyzer_Page_Dashboard::run()
     ↓
 1. Read stored JSON files
 2. Check if scan data exists

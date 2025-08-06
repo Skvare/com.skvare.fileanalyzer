@@ -14,7 +14,7 @@
   </item>
   <item>
     <path>civicrm/ajax/file-analyzer</path>
-    <page_callback>CRM_FileAnalyzer_Page_AJAX</page_callback>
+    <page_callback>CRM_Fileanalyzer_Page_AJAX</page_callback>
     <title>File Analyzer Settings</title>
     <access_arguments>administer CiviCRM</access_arguments>
   </item>

@@ -18,7 +18,7 @@ use CRM_Fileanalyzer_ExtensionUtil as E;
  * - File type and temporal analysis (monthly statistics)
  * - Database integrity checking across multiple CiviCRM tables
  */
-class CRM_FileAnalyzer_API_FileAnalysis {
+class CRM_Fileanalyzer_API_FileAnalysis {
 
   /**
    * Main scheduled job entry point for file analysis and cleanup

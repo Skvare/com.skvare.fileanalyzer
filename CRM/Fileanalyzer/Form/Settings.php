@@ -3,7 +3,7 @@
 use CRM_Fileanalyzer_ExtensionUtil as E;
 
 
-class CRM_FileAnalyzer_Form_Settings extends CRM_Admin_Form_Setting {
+class CRM_Fileanalyzer_Form_Settings extends CRM_Admin_Form_Setting {
 
   protected $_settings = [
     'fileanalyzer_auto_delete' => 'FileAnalyzer Setting',

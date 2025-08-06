@@ -41,7 +41,7 @@ function _civicrm_api3_file_analyzer_Scan_spec(&$spec) {
  */
 function civicrm_api3_file_analyzer_Scan($params) {
   try {
-    $result = CRM_FileAnalyzer_API_FileAnalysis::scheduledScan();
+    $result = CRM_Fileanalyzer_API_FileAnalysis::scheduledScan();
 
     return civicrm_api3_create_success(
       $result['messages'],
