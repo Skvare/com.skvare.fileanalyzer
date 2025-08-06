@@ -10,7 +10,12 @@ A comprehensive CiviCRM extension that analyzes file uploads, identifies abandon
 
 ### File Analyzer Dashboard:
 
-![Screenshot](/images/fileanalyzer_dashboard.png)
+#### By Storage Size Per Month Chart:
+
+![Screenshot](/images/fileanalyzer_dashboard_storage.png)
+
+#### By File Count Per Month Chart:
+![Screenshot](/images/fileanalyzer_dashboard_filecount.png)
 
 
 ## Overview
