@@ -355,7 +355,7 @@
     CRM.$('#fileanalyzer_auto_delete_fileanalyzer_auto_delete').prop('checked', false).trigger('change');
     CRM.$('#fileanalyzer_auto_delete_days').val('90');
     CRM.$('#fileanalyzer_backup_before_delete').prop('checked', true);
-    CRM.$('#fileanalyzer_excluded_extensions').val('tmp,log,cache');
+    CRM.$('#fileanalyzer_excluded_extensions').val('tmp,log,cache,htaccess');
   }
 
   // Show help overlay

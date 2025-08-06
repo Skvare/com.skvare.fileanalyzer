@@ -48,7 +48,7 @@ class CRM_Fileanalyzer_Upgrader extends CRM_Extension_Upgrader_Base {
       'fileanalyzer_auto_delete' => 0,
       'fileanalyzer_auto_delete_days' => 90,
       'fileanalyzer_backup_before_delete' => 1,
-      'fileanalyzer_excluded_extensions' => 'tmp,log,cache',
+      'fileanalyzer_excluded_extensions' => 'tmp,log,cache,htaccess',
     ];
 
     foreach ($settings as $name => $value) {

@@ -2,7 +2,7 @@
 /**
  * FileAnalyzer settings
  *
- * This file defines the settings for the FileAnalyzer extension. 
+ * This file defines the settings for the FileAnalyzer extension.
  */
 return [
   'fileanalyzer_auto_delete' => [
@@ -48,7 +48,7 @@ return [
   'fileanalyzer_excluded_extensions' => [
     'name' => 'fileanalyzer_excluded_extensions',
     'type' => 'String',
-    'default' => 'tmp,log,cache',
+    'default' => 'tmp,log,cache,htaccess',
     'add' => '5.0',
     'title' => ts('Excluded File Extensions'),
     'description' => ts('Comma-separated list of file extensions to exclude from analysis'),
@@ -57,7 +57,7 @@ return [
     'settings_pages' => ['fileanalyzer' => ['weight' => 50]],
     'html_type' => 'text',
     'html_attributes' => [
-      'placeholder' => 'tmp,log,cache',
+      'placeholder' => 'tmp,log,cache,htaccess',
     ],
   ],
 ];
