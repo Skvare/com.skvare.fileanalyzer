@@ -8,6 +8,18 @@
     <author>Sunil Pawar</author>
     <email>sunil@skvare.com</email>
   </maintainer>
+  <authors>
+    <author>
+      <name>Mark Hanna</name>
+      <email>mark@skvare.com</email>
+      <role>Maintainer</role>
+    </author>
+    <author>
+      <name>Genna</name>
+      <email>gena@skvare.com</email>
+      <role>CEO</role>
+    </author>
+  </authors>
   <urls>
     <url desc="Main Extension Page">https://github.com/Skvare/com.skvare.fileanalyzer</url>
     <url desc="Documentation">https://github.com/Skvare/com.skvare.fileanalyzer</url>

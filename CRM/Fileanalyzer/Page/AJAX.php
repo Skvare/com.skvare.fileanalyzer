@@ -1,7 +1,7 @@
 <?php
 
 /**
- * AJAX Handler for file operations
+ * Enhanced AJAX Handler for file operations with directory type support
  */
 class CRM_Fileanalyzer_Page_AJAX extends CRM_Core_Page {
 
@@ -21,31 +21,39 @@ class CRM_Fileanalyzer_Page_AJAX extends CRM_Core_Page {
   }
 
   /**
-   * Delete a specific file
+   * Delete a specific file with directory type support
    */
   private function deleteFile() {
     $filename = CRM_Utils_Request::retrieve('filename', 'String');
+    $directoryType = CRM_Utils_Request::retrieve('directory_type', 'String') ?: CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM;
 
     if (!$filename) {
       CRM_Utils_JSON::output(['error' => 'No filename provided']);
       return;
     }
 
-    $customPath = CRM_Core_Config::singleton()->customFileUploadDir;
-    $filePath = $customPath . '/' . $filename;
+    // Get the appropriate directory path based on type
+    try {
+      $basePath = $this->getDirectoryPath($directoryType);
+    }
+    catch (Exception $e) {
+      CRM_Utils_JSON::output(['error' => 'Invalid directory type']);
+      return;
+    }
 
-    // Security check - ensure file is within custom directory
-    $realCustomPath = realpath($customPath);
+    $filePath = $basePath . '/' . $filename;
+
+    // Security check - ensure file is within the specified directory
+    $realBasePath = realpath($basePath);
     $realFilePath = realpath($filePath);
 
-    if (!$realFilePath || strpos($realFilePath, $realCustomPath) !== 0) {
+    if (!$realFilePath || strpos($realFilePath, $realBasePath) !== 0) {
       CRM_Utils_JSON::output(['error' => 'Invalid file path']);
       return;
     }
 
-    // Double-check that file is abandoned
-    $fileAnalyzer = new CRM_Fileanalyzer_API_FileAnalysis();
-    if ($fileAnalyzer->isFileInUse(basename($filename))) {
+    // Double-check that file is abandoned using the appropriate directory type
+    if (CRM_Fileanalyzer_API_FileAnalysis::isFileInUse(basename($filename), $directoryType)) {
       CRM_Utils_JSON::output(['error' => 'File is in use and cannot be deleted']);
       return;
     }
@@ -59,18 +67,29 @@ class CRM_Fileanalyzer_Page_AJAX extends CRM_Core_Page {
   }
 
   /**
-   * Get detailed file information
+   * Get detailed file information with directory type support
    */
   private function getFileInfo() {
     $filename = CRM_Utils_Request::retrieve('filename', 'String');
-    CRM_Core_Error::debug_log_message("Getting info for file: $filename");
+    $directoryType = CRM_Utils_Request::retrieve('directory_type', 'String') ?: CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM;
+
+    CRM_Core_Error::debug_log_message("Getting info for file: $filename in directory: $directoryType");
+
     if (!$filename) {
       CRM_Utils_JSON::output(['error' => 'No filename provided']);
       return;
     }
 
-    $customPath = CRM_Core_Config::singleton()->customFileUploadDir;
-    $filePath = $customPath . '/' . $filename;
+    // Get the appropriate directory path based on type
+    try {
+      $basePath = $this->getDirectoryPath($directoryType);
+    }
+    catch (Exception $e) {
+      CRM_Utils_JSON::output(['error' => 'Invalid directory type']);
+      return;
+    }
+
+    $filePath = $basePath . '/' . $filename;
 
     if (file_exists($filePath)) {
       $stat = stat($filePath);
@@ -82,12 +101,45 @@ class CRM_Fileanalyzer_Page_AJAX extends CRM_Core_Page {
         'extension' => strtolower(pathinfo($filename, PATHINFO_EXTENSION)),
         'readable' => is_readable($filePath),
         'writable' => is_writable($filePath),
+        'directory_type' => $directoryType,
+        'full_path' => $filePath,
       ];
+
+      // Add directory-specific information
+      if ($directoryType === CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE) {
+        $info['usage_note'] = 'This image may be used in contribute page header or footer content.';
+      }
+      else {
+        $info['usage_note'] = 'This file may be used as custom file upload or attachment.';
+      }
 
       CRM_Utils_JSON::output($info);
     }
     else {
       CRM_Utils_JSON::output(['error' => 'File not found']);
+    }
+  }
+
+  /**
+   * Get the appropriate directory path based on directory type
+   *
+   * @param string $directoryType Directory type constant
+   * @return string Full path to the directory
+   * @throws Exception If directory type is invalid
+   */
+  private function getDirectoryPath($directoryType) {
+    $config = CRM_Core_Config::singleton();
+
+    switch ($directoryType) {
+      case CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM:
+        return $config->customFileUploadDir;
+
+      case CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE:
+        $baseDir = dirname($config->customFileUploadDir);
+        return $baseDir . '/persist/contribute/images';
+
+      default:
+        throw new Exception("Unknown directory type: {$directoryType}");
     }
   }
 }

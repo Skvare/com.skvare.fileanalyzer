@@ -7,6 +7,12 @@
     <access_arguments>administer CiviCRM</access_arguments>
   </item>
   <item>
+    <path>civicrm/file-analyzer/contribute-dashboard</path>
+    <page_callback>CRM_Fileanalyzer_Page_ContributeDashboard</page_callback>
+    <title>Contribute Images Dashboard</title>
+    <access_arguments>administer CiviCRM</access_arguments>
+  </item>
+  <item>
     <path>civicrm/admin/setting/fileanalyzer</path>
     <page_callback>CRM_Fileanalyzer_Form_Settings</page_callback>
     <title>File Analyzer Settings</title>
@@ -17,5 +23,17 @@
     <page_callback>CRM_Fileanalyzer_Page_AJAX</page_callback>
     <title>File Analyzer Settings</title>
     <access_arguments>administer CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/file-analyzer/preview</path>
+    <page_callback>CRM_Fileanalyzer_Page_Preview</page_callback>
+    <title>Preview</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/file-analyzer/export</path>
+    <page_callback>CRM_Fileanalyzer_Page_Export</page_callback>
+    <title>Export</title>
+    <access_arguments>access CiviCRM</access_arguments>
   </item>
 </menu>

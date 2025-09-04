@@ -2,12 +2,7 @@
 use CRM_Fileanalyzer_ExtensionUtil as E;
 
 /**
- * FileAnalyzer.Scan API specification (optional)
- * This is used for documentation and validation.
- *
- * @param array $spec description of fields supported by this API call
- *
- * @see https://docs.civicrm.org/dev/en/latest/framework/api-architecture/
+ * FileAnalyzer.Scan API specification with enhanced directory support
  */
 function _civicrm_api3_file_analyzer_Scan_spec(&$spec) {
   $spec['force_scan'] = [
@@ -25,15 +20,27 @@ function _civicrm_api3_file_analyzer_Scan_spec(&$spec) {
     'type' => CRM_Utils_Type::T_BOOLEAN,
     'api.default' => 0,
   ];
+
+  $spec['directory_type'] = [
+    'name' => 'directory_type',
+    'title' => 'Directory Type',
+    'description' => 'Type of directory to scan: custom, contribute, or all',
+    'type' => CRM_Utils_Type::T_STRING,
+    'api.default' => 'all',
+    'options' => [
+      'all' => 'All Directories',
+      'custom' => 'Custom Files Directory',
+      'contribute' => 'Contribute Images Directory',
+    ],
+  ];
 }
 
 /**
- * FileAnalyzer.Scan API
+ * FileAnalyzer.Scan API with enhanced directory support
  *
  * @param array $params
  *
- * @return array
- *   API result descriptor
+ * @return array API result descriptor
  *
  * @see civicrm_api3_create_success
  *
@@ -41,13 +48,25 @@ function _civicrm_api3_file_analyzer_Scan_spec(&$spec) {
  */
 function civicrm_api3_file_analyzer_Scan($params) {
   try {
-    $result = CRM_Fileanalyzer_API_FileAnalysis::scheduledScan();
+    // Get directory type parameter, default to 'all'
+    $directoryType = CRM_Utils_Array::value('directory_type', $params, 'all');
+
+    // Validate directory type
+    $validTypes = ['all', 'custom', 'contribute'];
+    if (!in_array($directoryType, $validTypes)) {
+      return civicrm_api3_create_error('Invalid directory type. Must be one of: ' . implode(', ', $validTypes));
+    }
+
+    // Execute the scan with the specified directory type
+    $result = CRM_Fileanalyzer_API_FileAnalysis::scheduledScan($directoryType);
 
     return civicrm_api3_create_success(
       $result['messages'],
       $params,
       'FileAnalyzer',
-      'scan'
+      'scan',
+      NULL,
+      ['directory_type' => $directoryType]
     );
   }
   catch (Exception $e) {

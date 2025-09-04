@@ -1,4 +1,4 @@
-/* js/dashboard.js - Dashboard JavaScript */
+/* js/dashboard.js - Enhanced Dashboard JavaScript with Directory Type Support */
 
 (function($) {
   'use strict';
@@ -34,6 +34,10 @@
         return monthlyData[month].count;
       });
 
+      // Use different colors based on directory type
+      var primaryColor = FileAnalyzerData.directoryType === 'contribute' ? '#764ba2' : '#667eea';
+      var secondaryColor = FileAnalyzerData.directoryType === 'contribute' ? 'rgba(118, 75, 162, 0.1)' : 'rgba(102, 126, 234, 0.1)';
+
       this.charts.timeline = new Chart(ctx, {
         type: 'line',
         data: {
@@ -41,12 +45,12 @@
           datasets: [{
             label: 'Storage Size (MB)',
             data: sizeData,
-            borderColor: '#667eea',
-            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            borderColor: primaryColor,
+            backgroundColor: secondaryColor,
             borderWidth: 3,
             fill: true,
             tension: 0.4,
-            pointBackgroundColor: '#667eea',
+            pointBackgroundColor: primaryColor,
             pointBorderColor: '#ffffff',
             pointBorderWidth: 2,
             pointRadius: 6,
@@ -66,7 +70,7 @@
               backgroundColor: 'rgba(0, 0, 0, 0.8)',
               titleColor: '#ffffff',
               bodyColor: '#ffffff',
-              borderColor: '#667eea',
+              borderColor: primaryColor,
               borderWidth: 1,
               cornerRadius: 6,
               displayColors: false,
@@ -131,10 +135,10 @@
         return typeData[type].size;
       });
 
-      var colors = [
-        '#ef4444', '#3b82f6', '#10b981', '#f59e0b',
-        '#8b5cf6', '#64748b', '#06b6d4', '#84cc16'
-      ];
+      // Use different color scheme for contribute images
+      var colors = FileAnalyzerData.directoryType === 'contribute'
+        ? ['#764ba2', '#667eea', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#fa709a', '#ffecd2']
+        : ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b', '#06b6d4', '#84cc16'];
 
       this.charts.fileType = new Chart(ctx, {
         type: 'doughnut',
@@ -181,7 +185,7 @@
               backgroundColor: 'rgba(0, 0, 0, 0.8)',
               titleColor: '#ffffff',
               bodyColor: '#ffffff',
-              borderColor: '#667eea',
+              borderColor: FileAnalyzerData.directoryType === 'contribute' ? '#764ba2' : '#667eea',
               borderWidth: 1,
               cornerRadius: 6,
               displayColors: true,
@@ -283,6 +287,7 @@
       var labels = Object.keys(monthlyData).sort();
 
       var data, label, color;
+      var primaryColor = FileAnalyzerData.directoryType === 'contribute' ? '#764ba2' : '#667eea';
 
       if (metric === 'count') {
         data = labels.map(function(month) {
@@ -295,7 +300,7 @@
           return (monthlyData[month].size / (1024 * 1024)).toFixed(2);
         });
         label = 'Storage Size (MB)';
-        color = '#667eea';
+        color = primaryColor;
       }
 
       this.charts.timeline.data.datasets[0].data = data;
@@ -345,7 +350,7 @@
     }
   };
 
-  // Global functions for template
+  // Global functions for template with directory type support
   window.toggleSelectAll = function() {
     FileAnalyzer.updateSelection();
   };
@@ -371,13 +376,21 @@
 
     $btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> ' + FileAnalyzerData.deletingMsg);
 
+    // Include directory type in the AJAX request
+    var requestData = {
+      operation: 'deleteFile',
+      filename: filename
+    };
+
+    // Add directory type if available
+    if (FileAnalyzerData.directoryType) {
+      requestData.directory_type = FileAnalyzerData.directoryType;
+    }
+
     $.ajax({
       url: FileAnalyzerData.ajaxUrl,
       type: 'POST',
-      data: {
-        operation: 'deleteFile',
-        filename: filename
-      },
+      data: requestData,
       dataType: 'json',
       success: function(response) {
         if (response.success) {
@@ -387,11 +400,14 @@
 
             // Check if no more files
             if ($('.file-row').length === 0) {
+              var emptyMessage = FileAnalyzerData.directoryType === 'contribute'
+                ? '<h4>No Orphaned Images Found!</h4><p>All images are properly referenced in contribute page content.</p>'
+                : '<h4>No Abandoned Files Found!</h4><p>All files are properly linked to CiviCRM entities.</p>';
+
               $('.files-panel .panel-body').html(
                 '<div class="empty-state">' +
                 '<div class="empty-icon"><i class="crm-i fa-check-circle"></i></div>' +
-                '<h4>No Abandoned Files Found!</h4>' +
-                '<p>All files are properly linked to CiviCRM entities.</p>' +
+                emptyMessage +
                 '</div>'
               );
             }
@@ -426,13 +442,20 @@
     $btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> Deleting...');
 
     var deletePromises = selectedFiles.map(function(filename) {
+      var requestData = {
+        operation: 'deleteFile',
+        filename: filename
+      };
+
+      // Add directory type if available
+      if (FileAnalyzerData.directoryType) {
+        requestData.directory_type = FileAnalyzerData.directoryType;
+      }
+
       return $.ajax({
         url: FileAnalyzerData.ajaxUrl,
         type: 'POST',
-        data: {
-          operation: 'deleteFile',
-          filename: filename
-        },
+        data: requestData,
         dataType: 'json'
       });
     });
@@ -451,11 +474,14 @@
           FileAnalyzer.clearSelection();
 
           if ($('.file-row').length === 0) {
+            var emptyMessage = FileAnalyzerData.directoryType === 'contribute'
+              ? '<h4>No Orphaned Images Found!</h4><p>All images are properly referenced in contribute page content.</p>'
+              : '<h4>No Abandoned Files Found!</h4><p>All files are properly linked to CiviCRM entities.</p>';
+
             $('.files-panel .panel-body').html(
               '<div class="empty-state">' +
               '<div class="empty-icon"><i class="crm-i fa-check-circle"></i></div>' +
-              '<h4>No Abandoned Files Found!</h4>' +
-              '<p>All files are properly linked to CiviCRM entities.</p>' +
+              emptyMessage +
               '</div>'
             );
           }
@@ -473,13 +499,20 @@
   };
 
   window.showFileInfo = function(filename) {
+    var requestData = {
+      operation: 'getFileInfo',
+      filename: filename
+    };
+
+    // Add directory type if available
+    if (FileAnalyzerData.directoryType) {
+      requestData.directory_type = FileAnalyzerData.directoryType;
+    }
+
     $.ajax({
       url: FileAnalyzerData.ajaxUrl,
       type: 'POST',
-      data: {
-        operation: 'getFileInfo',
-        filename: filename
-      },
+      data: requestData,
       dataType: 'json',
       success: function(response) {
         if (response.error) {
@@ -494,6 +527,8 @@
         html += '<div class="file-info-value">' + FileAnalyzer.formatBytes(response.size) + '</div>';
         html += '<div class="file-info-label">Type:</div>';
         html += '<div class="file-info-value">' + response.extension.toUpperCase() + ' file</div>';
+        html += '<div class="file-info-label">Directory:</div>';
+        html += '<div class="file-info-value">' + (response.directory_type || 'custom') + '</div>';
         html += '<div class="file-info-label">Created:</div>';
         html += '<div class="file-info-value">' + response.created + '</div>';
         html += '<div class="file-info-label">Modified:</div>';
@@ -503,8 +538,15 @@
         html += '<div class="file-info-label">Writable:</div>';
         html += '<div class="file-info-value">' + (response.writable ? 'Yes' : 'No') + '</div>';
         html += '</div>';
+
+        if (response.usage_note) {
+          html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; color: #059669; font-size: 0.875rem;">';
+          html += '<i class="crm-i fa-info-circle"></i> ' + response.usage_note;
+          html += '</div>';
+        }
+
         html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; color: #dc2626; font-size: 0.875rem;">';
-        html += '<i class="crm-i fa-warning"></i> This file is not linked to any CiviCRM entity and can be safely deleted.';
+        html += '<i class="crm-i fa-warning"></i> This file is not referenced and can be safely deleted.';
         html += '</div>';
 
         $('#fileInfoContent').html(html);

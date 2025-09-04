@@ -38,6 +38,10 @@ class CRM_Fileanalyzer_Upgrader extends CRM_Extension_Upgrader_Base {
       $htaccessContent = "Order deny,allow\nDeny from all\n";
       file_put_contents($htaccessPath, $htaccessContent);
     }
+    $subdirs = ['deleted_files', 'exports', 'reports'];
+    foreach ($subdirs as $subdir) {
+      mkdir($backupDir . '/' . $subdir, 0755, TRUE);
+    }
   }
 
   /**
