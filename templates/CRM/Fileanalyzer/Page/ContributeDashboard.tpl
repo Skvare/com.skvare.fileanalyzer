@@ -659,9 +659,6 @@
   }
 
   /* Contribute-specific color scheme */
-  .file-analyzer-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
 
   .stat-card {
     border-left-color: #764ba2;
@@ -724,11 +721,6 @@
 
     .image-metadata {
       flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .file-analyzer-header .header-actions {
-      flex-wrap: wrap;
       gap: 0.5rem;
     }
 
