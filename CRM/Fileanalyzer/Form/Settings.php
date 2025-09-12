@@ -14,10 +14,9 @@ class CRM_Fileanalyzer_Form_Settings extends CRM_Admin_Form_Setting {
 
   public function preProcess() {
     // Add CSS and JS resources
-    CRM_Core_Resources::singleton()
-      ->addStyleFile('com.skvare.fileanalyzer', 'css/settings.css');
+    CRM_Core_Resources::singleton()->addStyleFile('com.skvare.fileanalyzer', 'css/settings.css');
     $config = CRM_Core_Config::singleton();
-    $this->assign('customFileUploadDir', $config->customFileUploadDir);
+    $this->assign('fileUploadDir', $config->uploadDir);
     $this->assignTemplateVars();
     parent::preProcess();
   }
@@ -69,7 +68,7 @@ class CRM_Fileanalyzer_Form_Settings extends CRM_Admin_Form_Setting {
    */
   private function assignTemplateVars() {
     // Directory writable check
-    $backupPath = CRM_Core_Config::singleton()->customFileUploadDir . 'file_analyzer_backups';
+    $backupPath = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
     if (!is_dir($backupPath)) {
       if (!mkdir($backupPath, 0755, TRUE)) {
         CRM_Core_Error::debug_log_message('FileAnalyzer: Failed to create backup directory');

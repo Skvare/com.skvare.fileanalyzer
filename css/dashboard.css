@@ -20,12 +20,14 @@
   font-size: 2.2rem;
   font-weight: 700;
   margin: 0 0 0.5rem 0;
+  color: #000000;
 }
 
 .page-description {
   font-size: 1.1rem;
   opacity: 0.9;
   margin: 0;
+  color: #000000;
 }
 
 .header-actions {
@@ -34,7 +36,7 @@
 }
 
 .header-actions .button {
-  color: white;
+  color: #000000;
   border: 1px solid rgba(255,255,255,0.3);
   padding: 0.5rem 1rem;
   border-radius: 6px;

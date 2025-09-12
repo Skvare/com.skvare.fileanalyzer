@@ -10,7 +10,7 @@
   <div class="crm-block crm-content-block">
 
     {* Page Header *}
-    <div class="file-analyzer-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="file-analyzer-header">
       <div class="header-content">
         <h1 class="page-title">{ts}Contribute Images Dashboard{/ts}</h1>
         <p class="page-description">{ts}Monitor, analyze, and manage your CiviCRM contribute page images{/ts}</p>

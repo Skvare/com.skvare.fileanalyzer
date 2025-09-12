@@ -59,13 +59,13 @@ function civicrm_api3_file_analyzer_Scan($params) {
 
     // Execute the scan with the specified directory type
     $result = CRM_Fileanalyzer_API_FileAnalysis::scheduledScan($directoryType);
-
+    $dao = NULL;
     return civicrm_api3_create_success(
       $result['messages'],
       $params,
       'FileAnalyzer',
       'scan',
-      NULL,
+      $dao,
       ['directory_type' => $directoryType]
     );
   }

@@ -34,9 +34,7 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
   public function run() {
     // Set the browser title and page heading
     CRM_Utils_System::setTitle(ts('Contribute Images Analyzer Dashboard'));
-    $directoryType = 'contribute';
-    $result = CRM_Fileanalyzer_API_FileAnalysis::scheduledScan($directoryType);
-    echo '<pre>'; print_r($result); echo '</pre>'; exit;
+
     // Retrieve the latest scan results from cached JSON file for contribute directory
     $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE);
 

@@ -13,12 +13,19 @@
     <div class="settings-header">
       <h1 class="page-title">{ts}File Analyzer Settings{/ts}</h1>
       <p class="page-description">
-        {ts}Configure how the File Analyzer extension monitors and manages your CiviCRM files.{/ts}
+        {ts}Configure automated file monitoring, cleanup policies, and backup settings for your CiviCRM file system.{/ts}
       </p>
       <div class="header-links">
         <a href="{crmURL p='civicrm/file-analyzer/dashboard'}" class="button">
-          <i class="crm-i fa-dashboard"></i> {ts}View Dashboard{/ts}
+          <i class="crm-i fa-dashboard"></i> {ts}Custom Directory Dashboard{/ts}
         </a>
+        <span class="description">Monitor attachments stored in custom directories. This includes contact photos, uploaded documents, resumes, contracts, and other files attached through custom file fields.</span>
+      </div>
+      <div class="header-links">
+        <a href="{crmURL p='civicrm/file-analyzer/contribute-dashboard'}" class="button">
+          <i class="crm-i fa-dashboard"></i> {ts}Contribution Files Dashboard{/ts}
+        </a>
+        <span class="description">Track files in the contribute upload directory. This covers images and documents associated with premium gifts, thank-you materials, and CiviContribute related files.</span>
       </div>
     </div>
 
@@ -27,9 +34,9 @@
 
       {* Scanning Settings *}
       <fieldset class="settings-section">
-        <legend>{ts}File Scanning{/ts}</legend>
+        <legend>{ts}File Monitoring & Scanning{/ts}</legend>
         <div class="section-description">
-          {ts}Control how often the system scans for abandoned files and which files to analyze.{/ts}
+          {ts}Configure which files to monitor and how frequently the system should scan for orphaned files that are no longer referenced in the database.{/ts}
         </div>
 
         <div class="crm-section">
@@ -37,10 +44,10 @@
           <div class="content">
             {$form.fileanalyzer_excluded_extensions.html|crmAddClass:huge40}
             <div class="description">
-              {ts}Comma-separated list of file extensions to exclude from analysis (e.g., tmp,log,cache).{/ts}
+              {ts}Enter file extensions to exclude from analysis, separated by commas. These file types will be ignored during scans and cleanup operations.{/ts}
             </div>
             <div class="example">
-              <strong>{ts}Examples:{/ts}</strong> tmp,log,cache,bak,temp
+              <strong>{ts}Recommended exclusions:{/ts}</strong> tmp,log,cache,bak,temp,htaccess,gitignore
             </div>
           </div>
           <div class="clear"></div>
@@ -49,9 +56,9 @@
 
       {* Auto-Delete Settings *}
       <fieldset class="settings-section">
-        <legend>{ts}Automatic Cleanup{/ts}</legend>
+        <legend>{ts}Automated File Cleanup{/ts}</legend>
         <div class="section-description">
-          {ts}Configure automatic deletion of old abandoned files to maintain disk space.{/ts}
+          {ts}Set up automatic removal of orphaned files to prevent disk space accumulation. Files are only deleted if they're not referenced anywhere in your CiviCRM database.{/ts}
         </div>
 
         <div class="crm-section">
@@ -59,11 +66,11 @@
           <div class="content">
             {$form.fileanalyzer_auto_delete.html}
             <div class="description">
-              {ts}Enable automatic deletion of abandoned files older than the specified number of days.{/ts}
+              {ts}Enable automatic cleanup of orphaned files that have exceeded the age threshold. Only files with no database references will be removed.{/ts}
             </div>
             <div class="warning-box" style="display:none;" id="autoDeleteWarning">
               <i class="crm-i fa-warning"></i>
-              <strong>{ts}Warning:{/ts}</strong> {ts}Auto-delete will permanently remove files. Ensure backup is enabled before using this feature.{/ts}
+              <strong>{ts}Important:{/ts}</strong> {ts}Automatic deletion permanently removes files from your server. Always enable backup protection before activating this feature.{/ts}
             </div>
           </div>
           <div class="clear"></div>
@@ -74,7 +81,7 @@
           <div class="content">
             {$form.fileanalyzer_auto_delete_days.html}
             <div class="description">
-              {ts}Files that have been abandoned for more than this number of days will be automatically deleted.{/ts}
+              {ts}Number of days a file must remain orphaned before automatic deletion occurs. Recommended minimum: 30 days.{/ts}
             </div>
           </div>
           <div class="clear"></div>
@@ -83,9 +90,9 @@
 
       {* Backup Settings *}
       <fieldset class="settings-section">
-        <legend>{ts}File Backup{/ts}</legend>
+        <legend>{ts}File Protection & Backup{/ts}</legend>
         <div class="section-description">
-          {ts}Configure backup options to protect against accidental data loss.{/ts}
+          {ts}Configure safety measures to protect against accidental data loss during cleanup operations.{/ts}
         </div>
 
         <div class="crm-section">
@@ -93,11 +100,11 @@
           <div class="content">
             {$form.fileanalyzer_backup_before_delete.html}
             <div class="description">
-              {ts}Create a backup copy of files before deletion. Highly recommended for safety.{/ts}
+              {ts}Create backup copies of files before deletion. Strongly recommended to prevent data loss and enable file recovery if needed.{/ts}
             </div>
             <div class="info-box">
               <i class="crm-i fa-info-circle"></i>
-              {ts}Backup files are stored in:{/ts} <code>{$backupPath}</code>
+              {ts}Backup storage location:{/ts} <code>{$backupPath}</code>
             </div>
           </div>
           <div class="clear"></div>
@@ -106,47 +113,47 @@
 
       {* System Information *}
       <fieldset class="settings-section">
-        <legend>{ts}System Information{/ts}</legend>
+        <legend>{ts}System Status & Information{/ts}</legend>
         <div class="section-description">
-          {ts}Current system status and file directory information.{/ts}
+          {ts}View current system configuration, directory permissions, and operational status.{/ts}
         </div>
 
         <div class="system-info">
           <div class="info-grid">
             <div class="info-item">
-              <label>{ts}Custom File Directory:{/ts}</label>
-              <span class="value">{$customFileUploadDir}</span>
+              <label>{ts}Primary Upload Directory:{/ts}</label>
+              <span class="value">{$fileUploadDir}</span>
             </div>
             <div class="info-item">
-              <label>{ts}Directory Writable:{/ts}</label>
+              <label>{ts}Directory Write Access:{/ts}</label>
               <span class="value {if $dirWritable}success{else}error{/if}">
                 {if $dirWritable}
-                  <i class="crm-i fa-check"></i> {ts}Yes{/ts}
+                  <i class="crm-i fa-check"></i> {ts}Available{/ts}
                 {else}
-                  <i class="crm-i fa-times"></i> {ts}No{/ts}
+                  <i class="crm-i fa-times"></i> {ts}Restricted{/ts}
                 {/if}
               </span>
             </div>
             <div class="info-item">
-              <label>{ts}Backup Directory:{/ts}</label>
+              <label>{ts}Backup Storage Directory:{/ts}</label>
               <span class="value">{$backupPath}</span>
             </div>
             <div class="info-item">
-              <label>{ts}Last Scan:{/ts}</label>
-              <span class="value">{$lastScan|default:'{ts}Never{/ts}'}</span>
+              <label>{ts}Most Recent Scan:{/ts}</label>
+              <span class="value">{$lastScan|default:'{ts}No scans performed{/ts}'}</span>
             </div>
             <div class="info-item">
-              <label>{ts}Scheduled Job Status:{/ts}</label>
+              <label>{ts}Automated Job Status:{/ts}</label>
               <span class="value {if $scheduledJobActive}success{else}warning{/if}">
                 {if $scheduledJobActive}
-                  <i class="crm-i fa-check"></i> {ts}Active{/ts}
+                  <i class="crm-i fa-check"></i> {ts}Running{/ts}
                 {else}
-                  <i class="crm-i fa-warning"></i> {ts}Inactive{/ts}
+                  <i class="crm-i fa-warning"></i> {ts}Not Active{/ts}
                 {/if}
               </span>
             </div>
             <div class="info-item">
-              <label>{ts}PHP Memory Limit:{/ts}</label>
+              <label>{ts}Available PHP Memory:{/ts}</label>
               <span class="value">{$phpMemoryLimit}</span>
             </div>
           </div>
@@ -155,26 +162,26 @@
 
       {* Test & Actions *}
       <fieldset class="settings-section">
-        <legend>{ts}Test & Actions{/ts}</legend>
+        <legend>{ts}Manual Operations & Testing{/ts}</legend>
         <div class="section-description">
-          {ts}Test the file analyzer functionality and perform manual operations.{/ts}
+          {ts}Run diagnostic tests, execute manual scans, and perform maintenance tasks.{/ts}
         </div>
 
         <div class="action-buttons">
           <button type="button" class="button" onclick="testFileScan()" id="testScanBtn">
-            <i class="crm-i fa-search"></i> {ts}Test File Scan{/ts}
+            <i class="crm-i fa-search"></i> {ts}Run Diagnostic Scan{/ts}
           </button>
           <button type="button" class="button" onclick="runScheduledJob()" id="runJobBtn">
-            <i class="crm-i fa-play"></i> {ts}Run Scheduled Job{/ts}
+            <i class="crm-i fa-play"></i> {ts}Execute Manual Cleanup{/ts}
           </button>
           <button type="button" class="button" onclick="clearBackups()" id="clearBackupsBtn">
-            <i class="crm-i fa-trash"></i> {ts}Clear Old Backups{/ts}
+            <i class="crm-i fa-trash"></i> {ts}Clean Backup Archive{/ts}
           </button>
         </div>
 
         <div id="testResults" class="test-results" style="display:none;">
           <div class="results-header">
-            <h4>{ts}Test Results{/ts}</h4>
+            <h4>{ts}Operation Results{/ts}</h4>
           </div>
           <div class="results-content" id="testResultsContent">
             <!-- Results will be populated by JavaScript -->
@@ -186,7 +193,7 @@
       <div class="crm-submit-buttons">
         {include file="CRM/common/formButtons.tpl" location="bottom"}
         <span class="crm-button">
-          <input type="button" class="crm-form-submit default" name="_qf_Settings_refresh" value="{ts}Reset to Defaults{/ts}" onclick="resetToDefaults()" />
+          <input type="button" class="crm-form-submit default" name="_qf_Settings_refresh" value="{ts}Restore Default Settings{/ts}" onclick="resetToDefaults()" />
         </span>
       </div>
     </div>
@@ -197,23 +204,32 @@
 <div id="helpOverlay" class="help-overlay" style="display:none;">
   <div class="help-content">
     <div class="help-header">
-      <h3>{ts}File Analyzer Help{/ts}</h3>
+      <h3>{ts}File Analyzer User Guide{/ts}</h3>
       <button class="close-help" onclick="closeHelp()">
         <i class="crm-i fa-times"></i>
       </button>
     </div>
     <div class="help-body">
-      <h4>{ts}Auto-Delete{/ts}</h4>
-      <p>{ts}When enabled, files that have been abandoned for longer than the specified period will be automatically deleted. Use with caution and ensure backups are enabled.{/ts}</p>
+      <h4>{ts}Automated Cleanup{/ts}</h4>
+      <p>{ts}When enabled, orphaned files exceeding the age threshold are automatically removed. Files are only deleted if they have no references in your CiviCRM database. Always use with backup protection enabled.{/ts}</p>
 
-      <h4>{ts}File Exclusions{/ts}</h4>
-      <p>{ts}Specify file extensions that should be ignored during analysis. Common exclusions include temporary files, logs, and cache files.{/ts}</p>
+      <h4>{ts}File Exclusion Rules{/ts}</h4>
+      <p>{ts}Specify file extensions to skip during analysis. Common exclusions include system files (htaccess), temporary files (tmp), log files (log), and cache files (cache). This prevents the system from flagging important system files as orphaned.{/ts}</p>
 
-      <h4>{ts}Security Notes{/ts}</h4>
+      <h4>{ts}Security & Safety Features{/ts}</h4>
       <ul>
-        <li>{ts}Only users with 'administer CiviCRM' permission can access these settings{/ts}</li>
-        <li>{ts}Files are only deleted if they're not referenced in the database{/ts}</li>
-        <li>{ts}Backup system prevents accidental data loss{/ts}</li>
+        <li>{ts}Access restricted to users with 'administer CiviCRM' permissions{/ts}</li>
+        <li>{ts}Files are analyzed for database references before any deletion{/ts}</li>
+        <li>{ts}Backup system creates recovery copies of all deleted files{/ts}</li>
+        <li>{ts}Manual approval required for bulk operations{/ts}</li>
+      </ul>
+
+      <h4>{ts}Best Practices{/ts}</h4>
+      <ul>
+        <li>{ts}Start with a 30+ day retention period for safety{/ts}</li>
+        <li>{ts}Enable backups before using automatic cleanup{/ts}</li>
+        <li>{ts}Monitor results regularly through the dashboard{/ts}</li>
+        <li>{ts}Test with diagnostic scan before enabling automation{/ts}</li>
       </ul>
     </div>
   </div>
@@ -239,7 +255,7 @@
       var autoDeleteDays = parseInt($('#fileanalyzer_auto_delete_days').val());
 
       if ($('#fileanalyzer_auto_delete_fileanalyzer_auto_delete').is(':checked') && (autoDeleteDays < 1 || autoDeleteDays > 365)) {
-        CRM.alert('{/literal}{ts escape="js"}Auto-delete days must be between 1 and 365.{/ts}{literal}', '{/literal}{ts escape="js"}Invalid Input{/ts}{literal}', 'error');
+        CRM.alert('{/literal}{ts escape="js"}Retention period must be between 1 and 365 days.{/ts}{literal}', '{/literal}{ts escape="js"}Invalid Configuration{/ts}{literal}', 'error');
         e.preventDefault();
         return false;
       }
@@ -251,66 +267,66 @@
   // Test file scan functionality
   function testFileScan() {
     var btn = CRM.$('#testScanBtn');
-    btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Testing...{/ts}{literal}');
+    btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Scanning...{/ts}{literal}');
 
     CRM.api3('FileAnalyzer', 'getstats')
       .done(function(result) {
         showTestResults({
           success: true,
-          message: '{/literal}{ts escape="js"}File scan completed successfully{/ts}{literal}',
+          message: '{/literal}{ts escape="js"}Diagnostic scan completed successfully{/ts}{literal}',
           data: result.values
         });
       })
       .fail(function(error) {
         showTestResults({
           success: false,
-          message: '{/literal}{ts escape="js"}File scan failed{/ts}{literal}',
+          message: '{/literal}{ts escape="js"}Diagnostic scan encountered errors{/ts}{literal}',
           error: error.error_message
         });
       })
       .always(function() {
-        btn.prop('disabled', false).html('<i class="crm-i fa-search"></i> {/literal}{ts escape="js"}Test File Scan{/ts}{literal}');
+        btn.prop('disabled', false).html('<i class="crm-i fa-search"></i> {/literal}{ts escape="js"}Run Diagnostic Scan{/ts}{literal}');
       });
   }
 
   // Run scheduled job manually
   function runScheduledJob() {
     var btn = CRM.$('#runJobBtn');
-    btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Running...{/ts}{literal}');
+    btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Processing...{/ts}{literal}');
 
     CRM.api3('FileAnalyzer', 'scan', { force_scan: 1 })
       .done(function(result) {
         showTestResults({
           success: true,
-          message: '{/literal}{ts escape="js"}Scheduled job completed successfully{/ts}{literal}',
+          message: '{/literal}{ts escape="js"}Manual cleanup operation completed{/ts}{literal}',
           data: result.values
         });
       })
       .fail(function(error) {
         showTestResults({
           success: false,
-          message: '{/literal}{ts escape="js"}Scheduled job failed{/ts}{literal}',
+          message: '{/literal}{ts escape="js"}Cleanup operation failed{/ts}{literal}',
           error: error.error_message
         });
       })
       .always(function() {
-        btn.prop('disabled', false).html('<i class="crm-i fa-play"></i> {/literal}{ts escape="js"}Run Scheduled Job{/ts}{literal}');
+        btn.prop('disabled', false).html('<i class="crm-i fa-play"></i> {/literal}{ts escape="js"}Execute Manual Cleanup{/ts}{literal}');
       });
   }
 
   // Clear old backup files
   function clearBackups() {
-    if (!confirm('{/literal}{ts escape="js"}Are you sure you want to clear old backup files? This action cannot be undone.{/ts}{literal}')) {
+    if (!confirm('{/literal}{ts escape="js"}Are you sure you want to permanently remove old backup files? This action cannot be reversed.{/ts}{literal}')) {
       return;
     }
 
     var btn = CRM.$('#clearBackupsBtn');
-    btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Clearing...{/ts}{literal}');
+    btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> {/literal}{ts escape="js"}Cleaning...{/ts}{literal}');
 
     // This would need a custom API endpoint
-    CRM.alert('{/literal}{ts escape="js"}This feature will be implemented in a future version.{/ts}{literal}', '{/literal}{ts escape="js"}Coming Soon{/ts}{literal}', 'info');
+    CRM.alert('{/literal}{ts escape="js"}Backup archive management will be available in an upcoming release.{/ts}{literal}', '{/literal}{ts escape="js"}Feature In Development{/ts}{literal}', 'info');
 
-    btn.prop('disabled', false).html('<i class="crm-i fa-trash"></i> {/literal}{ts escape="js"}Clear Old Backups{/ts}{literal}');
+    btn.prop('disabled', false).html('<i class="crm-i fa-trash"></i> {/literal}{ts escape="js"}Clean Backup Archive{/ts}{literal}');
   }
 
   // Show test results
@@ -348,7 +364,7 @@
 
   // Reset form to defaults
   function resetToDefaults() {
-    if (!confirm('{/literal}{ts escape="js"}Are you sure you want to reset all settings to their default values?{/ts}{literal}')) {
+    if (!confirm('{/literal}{ts escape="js"}Are you sure you want to restore all settings to their factory defaults?{/ts}{literal}')) {
       return;
     }
 
@@ -374,7 +390,7 @@
 <script type="text/javascript">
   {literal}
   CRM.$(function($) {
-    $('.page-title').append(' <a href="#" onclick="showHelp(); return false;" class="help-link" title="{/literal}{ts escape="js"}Show Help{/ts}{literal}"><i class="crm-i fa-question-circle"></i></a>');
+    $('.page-title').append(' <a href="#" onclick="showHelp(); return false;" class="help-link" title="{/literal}{ts escape="js"}Show User Guide{/ts}{literal}"><i class="crm-i fa-question-circle"></i></a>');
   });
   {/literal}
 </script>

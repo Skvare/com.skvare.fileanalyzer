@@ -15,6 +15,9 @@
         <h1 class="page-title">{ts}File Analyzer Dashboard{/ts}</h1>
         <p class="page-description">{ts}Monitor, analyze, and manage your CiviCRM file uploads{/ts}</p>
         <div class="header-actions">
+          <a href="{crmURL p='civicrm/file-analyzer/contribute-dashboard'}" class="button">
+            <i class="crm-i fa-files-o"></i> {ts}Contribute Files{/ts}
+          </a>
           <a href="{crmURL p='civicrm/admin/setting/fileanalyzer'}" class="button">
             <i class="crm-i fa-cog"></i> {ts}Settings{/ts}
           </a>

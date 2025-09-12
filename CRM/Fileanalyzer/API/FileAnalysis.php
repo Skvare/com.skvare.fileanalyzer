@@ -45,15 +45,16 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     $settings = self::getSettings();
 
     // Get paths for file operations
-    $customPath = CRM_Core_Config::singleton()->customFileUploadDir;
+    $customPath = CRM_Core_Config::singleton()->uploadDir;
     $backupDir = $customPath . 'file_analyzer_backups';
 
     // Ensure all required directories exist before proceeding
     self::createDirectories();
 
-    $scanResults = [];
     $totalDeleted = 0;
-
+    $totalAbandonedFiles = 0;
+    $totalFiles = 0;
+    $scanResults = [];
     // Scan custom directory if requested
     if ($directory_type === 'all' || $directory_type === self::DIRECTORY_CUSTOM) {
       $customResults = self::performFileScan(self::DIRECTORY_CUSTOM);
@@ -62,6 +63,19 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       // Persist abandoned files list for custom directory
       $abandonedFilesPath = $backupDir . '/abandoned_files_custom.json';
       file_put_contents($abandonedFilesPath, json_encode($customResults['abandoned_files'], JSON_PRETTY_PRINT));
+
+      // Calculate total abandoned files across all directories
+      $totalAbandonedFiles += count($customResults['abandoned_files']);
+      $totalFiles += $customResults['directoryStats']['totalFiles'];
+      unset($customResults['abandoned_files']);
+
+      // Maintain latest scan results file for quick UI access
+      $latestScanPath = $backupDir . '/latest_scan_results_custom.json';
+      file_put_contents($latestScanPath, json_encode($customResults, JSON_PRETTY_PRINT));
+
+      // Create timestamped scan results file for historical tracking
+      $scanResultsPath = $backupDir . '/scan_results_' . date('Y-m-d_H-i-s') . '.json';
+      file_put_contents($scanResultsPath, json_encode($customResults, JSON_PRETTY_PRINT));
 
       // Execute automatic cleanup if enabled
       if ($settings['auto_delete'] && $settings['auto_delete_days']) {
@@ -80,28 +94,26 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       $abandonedFilesPath = $backupDir . '/abandoned_files_contribute.json';
       file_put_contents($abandonedFilesPath, json_encode($contributeResults['abandoned_files'], JSON_PRETTY_PRINT));
 
+      // Calculate total abandoned files across all directories
+      $totalAbandonedFiles += count($contributeResults['abandoned_files']);
+      $totalFiles += $contributeResults['directoryStats']['totalFiles'];
+      unset($contributeResults['abandoned_files']);
+
+      // Maintain latest scan results file for quick UI access
+      $latestScanPath = $backupDir . '/latest_scan_results_contribute.json';
+      file_put_contents($latestScanPath, json_encode($contributeResults, JSON_PRETTY_PRINT));
+
+      // Create timestamped scan results file for historical tracking
+      $scanResultsPath = $backupDir . '/scan_results_' . date('Y-m-d_H-i-s') . '.json';
+      file_put_contents($scanResultsPath, json_encode($contributeResults, JSON_PRETTY_PRINT));
+
+
       // Execute automatic cleanup if enabled
       if ($settings['auto_delete'] && $settings['auto_delete_days']) {
         $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$settings['auto_delete_days']} days"));
         $deletedCount = self::autoDeleteAbandonedFiles($cutoffDate, $settings['backup_before_delete'], $contributeResults['abandoned_files'], self::DIRECTORY_CONTRIBUTE);
         $totalDeleted += $deletedCount;
       }
-    }
-
-    // Create timestamped scan results file for historical tracking
-    $scanResultsPath = $backupDir . '/scan_results_' . date('Y-m-d_H-i-s') . '.json';
-    file_put_contents($scanResultsPath, json_encode($scanResults, JSON_PRETTY_PRINT));
-
-    // Maintain latest scan results file for quick UI access
-    $latestScanPath = $backupDir . '/latest_scan_results.json';
-    file_put_contents($latestScanPath, json_encode($scanResults, JSON_PRETTY_PRINT));
-
-    // Calculate total abandoned files across all directories
-    $totalAbandonedFiles = 0;
-    $totalFiles = 0;
-    foreach ($scanResults as $dirType => $results) {
-      $totalAbandonedFiles += count($results['abandoned_files']);
-      $totalFiles += $results['directoryStats']['totalFiles'];
     }
 
     // Log deletion activity for audit trail and troubleshooting
@@ -117,7 +129,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         "Total files scanned: {$totalFiles}",
         "Auto-deleted: {$totalDeleted} files"
       ],
-      'data' => $scanResults
+      //'data' => $scanResults
     ];
   }
 
@@ -143,10 +155,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   private static function performFileScan($directory_type) {
     // Get the appropriate directory path based on type
     $scanPath = self::getDirectoryPath($directory_type);
-    echo '<pre>$scanPath'; print_r($scanPath); echo '</pre>';
     // Recursively discover all files in directory tree
     $files = self::scanDirectoryRecursive($scanPath);
-    echo '<pre>$files'; print_r($files); echo '</pre>';
     // Load current extension settings for filtering
     $settings = self::getSettings();
 
@@ -288,94 +298,62 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    */
   public static function isFileInUse($filename, $directory_type = self::DIRECTORY_CUSTOM) {
     // Check main civicrm_file table for direct file references
-    $query = "
+    if ($directory_type == self::DIRECTORY_CUSTOM) {
+      $query = "
       SELECT COUNT(*) as count
       FROM civicrm_file
       WHERE uri = %1 OR uri LIKE %2
     ";
-    $params = [
-      1 => [$filename, 'String'],           // Exact filename match
-      2 => ['%' . $filename, 'String'],     // Filename anywhere in path
-    ];
-
-    $result = CRM_Core_DAO::executeQuery($query, $params);
-    $result->fetch();
-
-    // If found in main file table, definitely in use
-    if ($result->count > 0) {
-      return TRUE;
-    }
-
-    // For contribute images, check contribution page content
-    if ($directory_type === self::DIRECTORY_CONTRIBUTE) {
-      $contributeQuery = "
-        SELECT COUNT(*) as count
-        FROM civicrm_contribution_page
-        WHERE header_text LIKE %1 OR footer_text LIKE %1
-      ";
-      $contributeParams = [
-        1 => ['%' . $filename . '%', 'String'],
+      $params = [
+        1 => [$filename, 'String'],           // Exact filename match
+        2 => ['%' . $filename, 'String'],     // Filename anywhere in path
       ];
 
-      $contributeResult = CRM_Core_DAO::executeQuery($contributeQuery, $contributeParams);
-      $contributeResult->fetch();
+      $result = CRM_Core_DAO::executeQuery($query, $params);
+      $result->fetch();
 
-      if ($contributeResult->count > 0) {
+      // If found in main file table, definitely in use
+      if ($result->count > 0) {
         return TRUE;
       }
     }
+    else {
+      if ($directory_type === self::DIRECTORY_CONTRIBUTE) {
+        // For contribute images, check contribution page content
+        $contributeQuery = "
+        SELECT COUNT(*) as count
+        FROM civicrm_contribution_page
+        WHERE intro_text LIKE %1 OR thankyou_text LIKE %1
+      ";
+        $contributeParams = [
+          1 => ['%' . $filename . '%', 'String'],
+        ];
 
-    // Check custom field tables for file references
-    $customFieldQuery = "
-      SELECT cg.table_name, cf.column_name
-      FROM civicrm_custom_field cf
-      INNER JOIN civicrm_custom_group cg ON cf.custom_group_id = cg.id
-      WHERE cf.data_type = 'File' AND cg.table_name IS NOT NULL
-    ";
+        $contributeResult = CRM_Core_DAO::executeQuery($contributeQuery, $contributeParams);
+        $contributeResult->fetch();
 
-    $customFields = CRM_Core_DAO::executeQuery($customFieldQuery);
+        if ($contributeResult->count > 0) {
+          return TRUE;
+        }
 
-    // Check each custom field table for file references
-    while ($customFields->fetch()) {
-      if ($customFields->table_name && $customFields->column_name) {
-        // Verify custom table exists before querying (safety check)
-        $tableExistsQuery = "SHOW TABLES LIKE %1";
-        $tableCheck = CRM_Core_DAO::executeQuery($tableExistsQuery, [
-          1 => [$customFields->table_name, 'String']
-        ]);
+        $contributeQueryMsgTpl = "
+        SELECT COUNT(*) as count
+        FROM civicrm_msg_template
+        WHERE msg_html LIKE %1
+      ";
+        $contributeParams = [
+          1 => ['%' . $filename . '%', 'String'],
+        ];
 
-        // Query custom table for file references if table exists
-        if ($tableCheck->N > 0) {
-          $fileQuery = "
-            SELECT COUNT(*) as count
-            FROM `{$customFields->table_name}`
-            WHERE `{$customFields->column_name}` = %1 OR `{$customFields->column_name}` LIKE %2
-          ";
+        $contributeResultMsgTpl = CRM_Core_DAO::executeQuery($contributeQueryMsgTpl, $contributeParams);
+        $contributeResultMsgTpl->fetch();
 
-          $fileResult = CRM_Core_DAO::executeQuery($fileQuery, $params);
-          $fileResult->fetch();
-
-          // If found in any custom field, file is in use
-          if ($fileResult->count > 0) {
-            return TRUE;
-          }
+        if ($contributeResultMsgTpl->count > 0) {
+          return TRUE;
         }
       }
     }
-
-    // Check activity attachments through entity-file relationships
-    $activityQuery = "
-      SELECT COUNT(*) as count
-      FROM civicrm_entity_file ef
-      INNER JOIN civicrm_file f ON ef.file_id = f.id
-      WHERE f.uri = %1 OR f.uri LIKE %2
-    ";
-
-    $activityResult = CRM_Core_DAO::executeQuery($activityQuery, $params);
-    $activityResult->fetch();
-
-    // Return true if found in entity-file relationships
-    return $activityResult->count > 0;
+    return FALSE;
   }
 
   /**
@@ -427,7 +405,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    */
   private static function backupFile($filePath, $directory_type = self::DIRECTORY_CUSTOM) {
     // Define backup directory within the CiviCRM custom upload area
-    $backupDir = CRM_Core_Config::singleton()->customFileUploadDir . 'file_analyzer_backups';
+    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
 
     // Ensure backup directory exists
     if (!is_dir($backupDir)) {
@@ -480,6 +458,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     if (!is_dir($dir)) {
       return $files;
     }
+    $dir = rtrim($dir, '/');
 
     try {
       // Define directories to skip during scan
@@ -526,7 +505,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    */
   private static function createDirectories() {
     // Define main backup directory path
-    $backupDir = CRM_Core_Config::singleton()->customFileUploadDir . 'file_analyzer_backups';
+    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
 
     // Create main backup directory with appropriate permissions
     if (!is_dir($backupDir)) {
@@ -567,21 +546,16 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @return array|null Decoded scan results array, or null if no results exist
    */
   public static function getLatestScanResults($directory_type = null) {
-    $backupDir = CRM_Core_Config::singleton()->customFileUploadDir . 'file_analyzer_backups';
-    $latestScanPath = $backupDir . '/latest_scan_results.json';
+    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
+    $latestScanPath = $backupDir . '/latest_scan_results_' . $directory_type . '.json';
 
     if (file_exists($latestScanPath)) {
       $content = file_get_contents($latestScanPath);
       $results = json_decode($content, TRUE);
-
-      if ($directory_type && isset($results[$directory_type])) {
-        return $results[$directory_type];
-      }
-
       return $results;
     }
 
-    return NULL;
+    return [];
   }
 
   /**
@@ -591,7 +565,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @return array List of abandoned file information arrays
    */
   public static function getAbandonedFilesFromJson($directory_type = self::DIRECTORY_CUSTOM) {
-    $backupDir = CRM_Core_Config::singleton()->customFileUploadDir . 'file_analyzer_backups';
+    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
     $abandonedPath = $backupDir . '/abandoned_files_' . $directory_type . '.json';
 
     if (file_exists($abandonedPath)) {

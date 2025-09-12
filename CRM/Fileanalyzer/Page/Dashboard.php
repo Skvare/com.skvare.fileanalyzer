@@ -35,7 +35,7 @@ class CRM_Fileanalyzer_Page_Dashboard extends CRM_Core_Page {
 
     // Retrieve the latest scan results from cached JSON file
     // This avoids expensive real-time directory scanning
-    $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults();
+    $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM);
     // This date is used to inform users when the last scan was performed
     $this->assign('lastScanDate', $scanResults['scan_date']);
 
@@ -43,7 +43,7 @@ class CRM_Fileanalyzer_Page_Dashboard extends CRM_Core_Page {
 
     // Get abandoned files data from separate JSON file
     // Abandoned files are stored separately for quick access
-    $abandonedFiles = CRM_Fileanalyzer_API_FileAnalysis::getAbandonedFilesFromJson();
+    $abandonedFiles = CRM_Fileanalyzer_API_FileAnalysis::getAbandonedFilesFromJson(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM);
 
     // Assign file analysis data to template for chart rendering
     // JSON encode is needed for JavaScript chart libraries
