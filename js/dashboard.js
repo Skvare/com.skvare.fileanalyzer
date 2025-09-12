@@ -1,4 +1,4 @@
-/* js/dashboard.js - Enhanced Dashboard JavaScript with Directory Type Support */
+/* js/dashboard.js - Enhanced Dashboard JavaScript with Preview and Export Support */
 
 (function($) {
   'use strict';
@@ -6,12 +6,15 @@
   var FileAnalyzer = {
     charts: {},
     selectedFiles: [],
+    previewCache: {},
 
     init: function() {
       this.initializeCharts();
       this.bindEvents();
       this.formatFileSizes();
       this.updateStatistics();
+      this.initializePreviewFeatures();
+      this.initializeExportFeatures();
     },
 
     initializeCharts: function() {
@@ -28,13 +31,12 @@
 
       var labels = Object.keys(monthlyData).sort();
       var sizeData = labels.map(function(month) {
-        return (monthlyData[month].size / (1024 * 1024)).toFixed(2); // Convert to MB
+        return (monthlyData[month].size / (1024 * 1024)).toFixed(2);
       });
       var countData = labels.map(function(month) {
         return monthlyData[month].count;
       });
 
-      // Use different colors based on directory type
       var primaryColor = FileAnalyzerData.directoryType === 'contribute' ? '#764ba2' : '#667eea';
       var secondaryColor = FileAnalyzerData.directoryType === 'contribute' ? 'rgba(118, 75, 162, 0.1)' : 'rgba(102, 126, 234, 0.1)';
 
@@ -135,7 +137,6 @@
         return typeData[type].size;
       });
 
-      // Use different color scheme for contribute images
       var colors = FileAnalyzerData.directoryType === 'contribute'
         ? ['#764ba2', '#667eea', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#fa709a', '#ffecd2']
         : ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b', '#06b6d4', '#84cc16'];
@@ -232,6 +233,237 @@
       $('#timelineMetric').on('change', function() {
         self.updateTimelineChart($(this).val());
       });
+
+      // Preview thumbnails
+      $('.preview-thumbnail').on('click', function() {
+        var previewUrl = $(this).data('preview-url');
+        var filename = $(this).closest('tr').find('.filename').text();
+        self.showFilePreview(previewUrl, filename);
+      });
+    },
+
+    initializePreviewFeatures: function() {
+      var self = this;
+
+      // Initialize preview modal events
+      $(document).on('keydown', function(e) {
+        if (e.keyCode === 27) { // Escape key
+          self.closePreviewModal();
+        }
+      });
+
+      // Click outside to close preview
+      $(document).on('click', '.preview-modal-overlay', function() {
+        self.closePreviewModal();
+      });
+
+      // Prevent clicks inside modal from closing it
+      $(document).on('click', '.preview-modal-content', function(e) {
+        e.stopPropagation();
+      });
+    },
+
+    initializeExportFeatures: function() {
+      var self = this;
+
+      // Export dropdown
+      $(document).on('click', '.export-btn', function(e) {
+        e.stopPropagation();
+        self.toggleExportMenu();
+      });
+
+      // Close export menu when clicking outside
+      $(document).on('click', function(e) {
+        if (!$(e.target).closest('.export-dropdown').length) {
+          $('#exportMenu').hide();
+        }
+      });
+
+      // Handle export option clicks
+      $(document).on('click', '.export-option', function(e) {
+        e.preventDefault();
+        var format = $(this).attr('href').split('format=')[1];
+        self.triggerExport(format);
+        $('#exportMenu').hide();
+      });
+    },
+
+    showFilePreview: function(previewUrl, filename) {
+      var self = this;
+      var modal = $('#filePreviewModal');
+      var body = $('#previewModalBody');
+      var title = $('#previewModalTitle');
+      var fullPreviewBtn = $('#fullPreviewBtn');
+
+      title.text(filename || 'File Preview');
+      fullPreviewBtn.attr('data-url', previewUrl);
+
+      modal.show();
+      body.html('<div class="loading"><i class="crm-i fa-spinner fa-spin"></i> ' + FileAnalyzerData.previewLoadingMsg + '</div>');
+
+      // Check if it's an image or other file type
+      var extension = previewUrl.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(extension)) {
+        self.loadImagePreview(previewUrl, filename, body);
+      } else if (extension === 'pdf') {
+        self.loadPDFPreview(previewUrl, body);
+      } else {
+        self.loadGenericPreview(previewUrl, body);
+      }
+    },
+
+    loadImagePreview: function(previewUrl, filename, container) {
+      var img = new Image();
+      img.onload = function() {
+        container.html(
+          '<div class="image-preview">' +
+          '<img src="' + previewUrl + '" alt="' + filename + '" style="max-width: 100%; max-height: 70vh; border-radius: 4px;" />' +
+          '<div class="image-info" style="margin-top: 1rem; color: #6c757d; font-size: 0.9rem;">' +
+          'Dimensions: ' + this.naturalWidth + ' × ' + this.naturalHeight + ' pixels' +
+          '</div>' +
+          '</div>'
+        );
+      };
+      img.onerror = function() {
+        container.html('<div class="preview-error"><i class="crm-i fa-exclamation-triangle"></i> ' + FileAnalyzerData.previewErrorMsg + '</div>');
+      };
+      img.src = previewUrl;
+    },
+
+    loadPDFPreview: function(previewUrl, container) {
+      container.html(
+        '<div class="pdf-preview">' +
+        '<iframe src="' + previewUrl + '" style="width: 100%; height: 500px; border: 1px solid #ddd; border-radius: 4px;"></iframe>' +
+        '<div class="preview-note" style="margin-top: 1rem; color: #6c757d; font-size: 0.9rem; text-align: center;">' +
+        'PDF preview - Click "Open Full View" for better experience' +
+        '</div>' +
+        '</div>'
+      );
+    },
+
+    loadGenericPreview: function(previewUrl, container) {
+      // For text files and other generic content
+      var self = this;
+
+      $.ajax({
+        url: previewUrl,
+        method: 'GET',
+        success: function(data) {
+          if (typeof data === 'string') {
+            // Text content
+            container.html(
+              '<div class="text-preview">' +
+              '<pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; overflow: auto; max-height: 400px; font-family: monospace; font-size: 0.9rem;">' +
+              self.escapeHtml(data.substring(0, 2000)) + (data.length > 2000 ? '\n\n... (truncated)' : '') +
+              '</pre>' +
+              '</div>'
+            );
+          } else {
+            // Fallback for non-text content
+            container.html(
+              '<div class="generic-preview" style="text-align: center; padding: 2rem;">' +
+              '<i class="crm-i fa-file-o" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem;"></i>' +
+              '<p>Preview not available for this file type.</p>' +
+              '<p>Click "Open Full View" to download or view the file.</p>' +
+              '</div>'
+            );
+          }
+        },
+        error: function() {
+          container.html('<div class="preview-error"><i class="crm-i fa-exclamation-triangle"></i> ' + FileAnalyzerData.previewErrorMsg + '</div>');
+        }
+      });
+    },
+
+    closePreviewModal: function() {
+      $('#filePreviewModal').hide();
+    },
+
+    openFullPreview: function() {
+      var url = $('#fullPreviewBtn').attr('data-url');
+      if (url) {
+        window.open(url, '_blank', 'width=1024,height=768,scrollbars=yes,resizable=yes');
+      }
+    },
+
+    toggleExportMenu: function() {
+      var menu = $('#exportMenu');
+      menu.toggle();
+    },
+
+    triggerExport: function(format) {
+      var self = this;
+
+      // Show loading state
+      CRM.status({}, $.Deferred().resolve());
+
+      // Trigger export via AJAX first to prepare the file
+      $.ajax({
+        url: FileAnalyzerData.ajaxUrl,
+        type: 'POST',
+        data: {
+          operation: 'triggerExport',
+          directory_type: FileAnalyzerData.directoryType,
+          format: format
+        },
+        dataType: 'json',
+        success: function(response) {
+          if (response.export_url) {
+            // Redirect to download the file
+            window.location.href = response.export_url;
+            self.showNotification('Export initiated successfully', 'success');
+          } else {
+            self.showNotification('Export failed: ' + (response.error || 'Unknown error'), 'error');
+          }
+        },
+        error: function() {
+          self.showNotification('Export request failed', 'error');
+        }
+      });
+    },
+
+    previewSelectedFiles: function() {
+      var selectedFiles = this.selectedFiles;
+      if (selectedFiles.length === 0) {
+        this.showNotification('Please select files to preview', 'error');
+        return;
+      }
+
+      var modal = $('#filePreviewModal');
+      var body = $('#previewModalBody');
+      var title = $('#previewModalTitle');
+
+      title.text('Selected Files Preview (' + selectedFiles.length + ' files)');
+      modal.show();
+
+      var galleryHtml = '<div class="preview-gallery">';
+      var self = this;
+
+      selectedFiles.forEach(function(filename) {
+        var file = FileAnalyzerData.abandonedFiles.find(function(f) {
+          return f.filename === filename;
+        });
+
+        if (file && file.can_preview) {
+          galleryHtml += '<div class="gallery-item" onclick="FileAnalyzer.showFilePreview(\'' + file.preview_url + '\', \'' + file.filenameOnly + '\')">';
+          galleryHtml += '<div class="gallery-thumbnail">';
+
+          if (file.preview_type === 'image') {
+            galleryHtml += '<img src="' + file.preview_url + '" alt="' + file.filenameOnly + '" />';
+          } else if (file.preview_type === 'pdf') {
+            galleryHtml += '<i class="crm-i fa-file-pdf-o" style="font-size: 2rem; color: #dc3545;"></i>';
+          } else {
+            galleryHtml += '<i class="crm-i fa-file-o" style="font-size: 2rem; color: #6c757d;"></i>';
+          }
+
+          galleryHtml += '</div>';
+          galleryHtml += '<div class="gallery-filename">' + file.filenameOnly + '</div>';
+          galleryHtml += '</div>';
+        }
+      });
+      galleryHtml += '</div>';
+
+      body.html(galleryHtml);
     },
 
     formatFileSizes: function() {
@@ -266,9 +498,11 @@
       if (this.selectedFiles.length > 0) {
         $('#bulkActionsBar').show();
         $('#bulkDeleteBtn').show();
+        $('#bulkPreviewBtn').show();
       } else {
         $('#bulkActionsBar').hide();
         $('#bulkDeleteBtn').hide();
+        $('#bulkPreviewBtn').hide();
       }
 
       // Update select all checkbox state
@@ -340,17 +574,26 @@
       return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     },
 
+    escapeHtml: function(text) {
+      var map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    },
+
     showNotification: function(message, type) {
       type = type || 'info';
-      var className = 'crm-msg-' + type;
-
       CRM.alert(message, '', type, {
         expires: 5000
       });
     }
   };
 
-  // Global functions for template with directory type support
+  // Global functions for template with enhanced preview and export support
   window.toggleSelectAll = function() {
     FileAnalyzer.updateSelection();
   };
@@ -376,13 +619,11 @@
 
     $btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> ' + FileAnalyzerData.deletingMsg);
 
-    // Include directory type in the AJAX request
     var requestData = {
       operation: 'deleteFile',
       filename: filename
     };
 
-    // Add directory type if available
     if (FileAnalyzerData.directoryType) {
       requestData.directory_type = FileAnalyzerData.directoryType;
     }
@@ -398,7 +639,6 @@
             $(this).remove();
             FileAnalyzer.updateStatistics();
 
-            // Check if no more files
             if ($('.file-row').length === 0) {
               var emptyMessage = FileAnalyzerData.directoryType === 'contribute'
                 ? '<h4>No Orphaned Images Found!</h4><p>All images are properly referenced in contribute page content.</p>'
@@ -447,7 +687,6 @@
         filename: filename
       };
 
-      // Add directory type if available
       if (FileAnalyzerData.directoryType) {
         requestData.directory_type = FileAnalyzerData.directoryType;
       }
@@ -462,7 +701,6 @@
 
     $.when.apply($, deletePromises).then(
       function() {
-        // All successful
         selectedFiles.forEach(function(filename) {
           $('.file-row[data-filename="' + filename + '"]').fadeOut(300, function() {
             $(this).remove();
@@ -490,7 +728,6 @@
         FileAnalyzer.showNotification(selectedFiles.length + ' files deleted successfully', 'success');
       },
       function() {
-        // Some failed
         FileAnalyzer.showNotification('Some files could not be deleted. Please try again.', 'error');
       }
     ).always(function() {
@@ -504,7 +741,6 @@
       filename: filename
     };
 
-    // Add directory type if available
     if (FileAnalyzerData.directoryType) {
       requestData.directory_type = FileAnalyzerData.directoryType;
     }
@@ -562,8 +798,32 @@
     $('#fileInfoModal').hide();
   };
 
+  // Enhanced global functions for preview and export
+  window.showFilePreview = function(previewUrl, filename) {
+    FileAnalyzer.showFilePreview(previewUrl, filename);
+  };
+
+  window.showImagePreview = function(previewUrl, filename) {
+    FileAnalyzer.showFilePreview(previewUrl, filename);
+  };
+
+  window.closePreviewModal = function() {
+    FileAnalyzer.closePreviewModal();
+  };
+
+  window.openFullPreview = function() {
+    FileAnalyzer.openFullPreview();
+  };
+
+  window.toggleExportMenu = function() {
+    FileAnalyzer.toggleExportMenu();
+  };
+
+  window.previewSelectedFiles = function() {
+    FileAnalyzer.previewSelectedFiles();
+  };
+
   window.showBulkDeleteDialog = function() {
-    // This would show a more sophisticated bulk delete dialog
     window.bulkDeleteFiles();
   };
 
@@ -599,9 +859,10 @@
 
     // Keyboard shortcuts
     $(document).on('keydown', function(e) {
-      // Escape key closes modal
+      // Escape key closes modals
       if (e.keyCode === 27) {
         closeFileInfoModal();
+        closePreviewModal();
       }
 
       // Ctrl/Cmd + A selects all files
@@ -615,13 +876,19 @@
         e.preventDefault();
         bulkDeleteFiles();
       }
+
+      // Spacebar for preview when files are selected
+      if (e.keyCode === 32 && FileAnalyzer.selectedFiles.length > 0) {
+        e.preventDefault();
+        previewSelectedFiles();
+      }
     });
 
     // Auto-refresh every 5 minutes
     setInterval(function() {
       if (document.visibilityState === 'visible') {
         // Only refresh if page is visible
-        FileAnalyzer.refreshData();
+        // FileAnalyzer.refreshData();
       }
     }, 300000); // 5 minutes
 
@@ -629,7 +896,6 @@
     document.addEventListener('visibilitychange', function() {
       if (!document.hidden) {
         // Page became visible, check for updates
-        // In a real implementation, you might check if data is stale
       }
     });
 
