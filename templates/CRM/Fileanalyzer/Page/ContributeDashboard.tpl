@@ -40,50 +40,10 @@
           </button>
         </div>
       </div>
-    </div>
-
-    {* Directory Info Banner *}
-    <div class="file-analyzer-stats">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="crm-i fa-folder-open"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{ts}Contribute Images{/ts}</div>
-            <div class="stat-label">{ts}Directory Type{/ts}</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="crm-i fa-map-marker"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number" style="font-size: 0.8rem; word-break: break-all;">{$directoryPath}</div>
-            <div class="stat-label">{ts}Directory Path{/ts}</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="crm-i fa-clock-o"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{if $lastScanDate}{$lastScanDate|crmDate:'%B %d, %Y at %I:%M %p'}{else}{ts}Never{/ts}{/if}</div>
-            <div class="stat-label">{ts}Last Scan{/ts}</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="crm-i fa-info-circle"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{ts}Contribute Pages{/ts}</div>
-            <div class="stat-label">{ts}Used In{/ts}</div>
-          </div>
-        </div>
+      <div class="panel-header">
+      <p class="page-description">
+        {ts}Last Scan{/ts}: {if $lastScanDate}{$lastScanDate|crmDate:'%B %d, %Y at %I:%M %p'}{else}{ts}Never{/ts}{/if}
+      </p>
       </div>
     </div>
 
