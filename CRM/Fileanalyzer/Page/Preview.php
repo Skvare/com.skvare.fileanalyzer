@@ -38,8 +38,9 @@ class CRM_Fileanalyzer_Page_Preview extends CRM_Core_Page {
    */
   public function run() {
     // Get request parameters
+
     $filePath = CRM_Utils_Request::retrieve('file', 'String', $this, TRUE);
-    $directoryType = CRM_Utils_Request::retrieve('directory_type', 'String', $this, FALSE);
+    $directoryType = CRM_Utils_Request::retrieve('directory_type', 'String', NULL, FALSE);
     $previewMode = CRM_Utils_Request::retrieve('mode', 'String', $this, FALSE, self::MODE_INLINE);
 
     // Validate and sanitize file path
@@ -61,6 +62,9 @@ class CRM_Fileanalyzer_Page_Preview extends CRM_Core_Page {
 
     // Get comprehensive file information
     $fileInfo = $this->getComprehensiveFileInfo($filePath, $directoryType);
+    if ($fileInfo['is_pdf']) {
+      //$previewMode = 'inline'; // Force inline for PDFs
+    }
     // Handle different preview modes
     switch ($previewMode) {
       case self::MODE_DOWNLOAD:
@@ -903,7 +907,8 @@ class CRM_Fileanalyzer_Page_Preview extends CRM_Core_Page {
       $contributeDir = $baseDir . '/persist/contribute';
       if (strpos($filePath, $contributeDir) === 0) {
         $relativePath = substr($filePath, strlen($contributeDir) + 1);
-        $baseUrl = str_replace('/custom/', '/persist/contribute/', $config->imageUploadURL);
+        $baseUrl = str_replace('/custom/', '/persist/contribute/images/',
+          $config->imageUploadURL);
         return $baseUrl . $relativePath;
       }
     }
