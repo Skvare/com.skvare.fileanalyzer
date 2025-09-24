@@ -153,30 +153,33 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    *   - active_files: Count of files still in use
    */
   private static function performFileScan($directory_type) {
-    // Get the appropriate directory path based on type
+    CRM_Core_Error::debug_log_message("File Analyzer: Starting scan of {$directory_type} directory");
     $scanPath = self::getDirectoryPath($directory_type);
-    // Recursively discover all files in directory tree
     $files = self::scanDirectoryRecursive($scanPath);
-    // Load current extension settings for filtering
     $settings = self::getSettings();
 
-    // Initialize comprehensive results structure
     $scanResults = [
-      'scan_date' => date('Y-m-d H:i:s'),           // When this scan was performed
-      'directory_type' => $directory_type,          // Type of directory scanned
-      'abandoned_files' => [],                      // Files not referenced in database
-      'fileAnalysis' => [                          // Statistical analysis
-        'monthly' => [],                            // Files grouped by modification month
-        'fileTypes' => []                           // Files grouped by extension
+      'scan_date' => date('Y-m-d H:i:s'), // When this scan was performed
+      'directory_type' => $directory_type,       // Type of directory scanned
+      'abandoned_files' => [],                   // Files not referenced in database
+      'fileAnalysis' => [                        // Statistical analysis
+        'monthly' => [],                         // Files grouped by modification month
+        'fileTypes' => []                        // Files grouped by extension
       ],
-      'directoryStats' => [                        // Overall directory metrics
-        'totalSize' => 0,                          // Total bytes consumed
-        'totalFiles' => 0                          // Total file count
+      'directoryStats' => [                      // Overall directory metrics
+        'totalSize' => 0,                        // Total bytes consumed
+        'totalFiles' => 0                        // Total file count
       ],
-      'active_files' => 0,                         // Count of files still in use
+      'active_files' => 0,                       // Count of files still in use
     ];
 
-    // Process each discovered file
+    $totalFiles = count($files);
+    CRM_Core_Error::debug_log_message('File Analyzer: Scanning ' . $totalFiles . " files in {$directory_type} directory");
+
+    // Build file info array first (without database calls)
+    $fileInfoArray = [];
+    $filenames = [];
+
     foreach ($files as $file) {
       $fullPath = $scanPath . '/' . $file;
 
@@ -188,28 +191,45 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       // Get file system metadata
       $stat = stat($fullPath);
       $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-      $month = date('Y-m', $stat['mtime']); // Group by year-month for trends
 
       // Skip files with excluded extensions (e.g., system files, logs)
       if (in_array($extension, $settings['excluded_extensions'])) {
         continue;
       }
 
-      // Build comprehensive file information record
+      $filename = basename($file);
       $fileInfo = [
-        'filename' => $file,                        // Relative file path
-        'filenameOnly' => basename($file),          // Just the filename
-        'size' => $stat['size'],                    // File size in bytes
+        'filename' => $file, // Relative file path
+        'filenameOnly' => $filename,  // Just the filename
+        'size' => $stat['size'], // File size in bytes
         'modified' => date('Y-m-d H:i:s', $stat['mtime']), // Last modification
-        'extension' => $extension,                  // File extension for categorization
-        'in_use' => self::isFileInUse(basename($file), $directory_type), // Database reference check
-        'path' => $fullPath,                       // Full file path for operations
-        'directory_type' => $directory_type,       // Which directory this file belongs to
+        'extension' => $extension, // File extension for categorization
+        'path' => $fullPath, // Full file path for operations
+        'directory_type' => $directory_type, //  Which directory this file belongs to
       ];
+
+      $fileInfoArray[] = $fileInfo;
+      $filenames[] = $filename;
+    }
+
+    // Now perform batch database check
+    CRM_Core_Error::debug_log_message('File Analyzer: Performing batch database check for ' . count($filenames) . ' files');
+    $filesInUse = self::batchCheckFilesInUse($filenames, $directory_type);
+
+    // Process results
+    $abandonedCount = 0;
+    foreach ($fileInfoArray as $fileInfo) {
+      $filename = $fileInfo['filenameOnly'];
+      $extension = $fileInfo['extension'];
+      $stat_size = $fileInfo['size'];
+      $month = date('Y-m', strtotime($fileInfo['modified']));
+
+      // Check if file is in use from batch results
+      $fileInfo['in_use'] = isset($filesInUse[$filename]);
 
       // Update overall statistics
       $scanResults['directoryStats']['totalFiles']++;
-      $scanResults['directoryStats']['totalSize'] += $stat['size'];
+      $scanResults['directoryStats']['totalSize'] += $stat_size;
 
       // Categorize file based on database usage
       if ($fileInfo['in_use']) {
@@ -219,9 +239,10 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       else {
         // File is not referenced - add to abandoned list for potential cleanup
         $scanResults['abandoned_files'][] = $fileInfo;
+        $abandonedCount++;
       }
 
-      // Build file type statistics for reporting
+      // Build file type statistics
       if (!isset($scanResults['fileAnalysis']['fileTypes'][$extension])) {
         $scanResults['fileAnalysis']['fileTypes'][$extension] = [
           'count' => 0,           // Total files of this type
@@ -230,27 +251,203 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         ];
       }
       $scanResults['fileAnalysis']['fileTypes'][$extension]['count']++;
-      $scanResults['fileAnalysis']['fileTypes'][$extension]['size'] += $stat['size'];
+      $scanResults['fileAnalysis']['fileTypes'][$extension]['size'] += $stat_size;
       if (!$fileInfo['in_use']) {
         $scanResults['fileAnalysis']['fileTypes'][$extension]['abandoned_count']++;
       }
 
-      // Build monthly statistics for trend analysis
+      // Build monthly statistics
       if (!isset($scanResults['fileAnalysis']['monthly'][$month])) {
         $scanResults['fileAnalysis']['monthly'][$month] = [
-          'count' => 0,           // Files created/modified this month
-          'size' => 0,            // Total bytes for this month
-          'abandoned_count' => 0  // Abandoned files from this month
+          'count' => 0, // Files created/modified this month
+          'size' => 0, // Total bytes for this month
+          'abandoned_count' => 0 // Abandoned files from this month
         ];
       }
       $scanResults['fileAnalysis']['monthly'][$month]['count']++;
-      $scanResults['fileAnalysis']['monthly'][$month]['size'] += $stat['size'];
+      $scanResults['fileAnalysis']['monthly'][$month]['size'] += $stat_size;
       if (!$fileInfo['in_use']) {
         $scanResults['fileAnalysis']['monthly'][$month]['abandoned_count']++;
       }
     }
 
+    CRM_Core_Error::debug_log_message("File Analyzer: Found {$abandonedCount} abandoned files out of " . count($fileInfoArray));
     return $scanResults;
+  }
+
+  /**
+   * Batch check if files are referenced in CiviCRM database tables
+   * This replaces individual calls with efficient batch queries
+   *
+   * @param array $filenames Array of filenames to check
+   * @param string $directory_type Type of directory being checked
+   * @return array Associative array with filename as key if file is in use
+   */
+  private static function batchCheckFilesInUse($filenames, $directory_type = self::DIRECTORY_CUSTOM) {
+    $filesInUse = [];
+
+    if (empty($filenames)) {
+      return $filesInUse;
+    }
+
+    // Process in batches to avoid query length limits
+    $batchSize = 50; // Adjust based on your MySQL max_allowed_packet
+    $batches = array_chunk($filenames, $batchSize);
+
+    foreach ($batches as $batchIndex => $batch) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Processing batch " . ($batchIndex + 1) . " of " . count($batches));
+
+      if ($directory_type == self::DIRECTORY_CUSTOM) {
+        $filesInUse = array_merge($filesInUse, self::batchCheckCustomFiles($batch));
+      } else if ($directory_type === self::DIRECTORY_CONTRIBUTE) {
+        $filesInUse = array_merge($filesInUse, self::batchCheckContributeFiles($batch));
+      }
+    }
+
+    return $filesInUse;
+  }
+
+  /**
+   * Batch check custom files in civicrm_file table
+   *
+   * @param array $batch Array of filenames to check
+   * @return array Associative array with filename as key if file is in use
+   */
+  private static function batchCheckCustomFiles($batch) {
+    $filesInUse = [];
+
+    // Create placeholders for IN clause
+    $placeholders = [];
+    $params = [];
+    foreach ($batch as $index => $filename) {
+      $placeholders[] = "%{$index}";
+      $params[$index] = [$filename, 'String'];
+    }
+
+    $placeholderString = implode(',', $placeholders);
+
+    // Query for exact matches and partial matches
+    $query = "
+    SELECT DISTINCT uri as filename
+    FROM civicrm_file 
+    WHERE uri IN ({$placeholderString})";
+
+    try {
+      $result = CRM_Core_DAO::executeQuery($query, $params);
+      while ($result->fetch()) {
+        if ($result->filename) {
+          $filesInUse[$result->filename] = TRUE;
+        }
+      }
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch custom file check: " . $e->getMessage());
+    }
+
+    // Check civicrm_contact table for image_URL references
+    // Use a simpler approach that's more reliable across MySQL versions
+    try {
+      $contactQuery = "
+      SELECT DISTINCT image_URL
+      FROM civicrm_contact 
+      WHERE image_URL IS NOT NULL AND image_URL != '' ";
+
+      $contactResult = CRM_Core_DAO::executeQuery($contactQuery);
+      while ($contactResult->fetch()) {
+        $imageUrl = $contactResult->image_URL;
+
+        // Check each filename in the batch against this image URL
+        foreach ($batch as $filename) {
+          // Check if filename appears in the URL in any of these formats:
+          // 1. As query parameter: ?photo=filename.jpg
+          // 2. In path: /files/civicrm/custom/filename.jpg
+          // 3. Direct match
+          if (str_contains($imageUrl, $filename)) {
+            $filesInUse[$filename] = TRUE;
+          }
+        }
+      }
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch custom file check (civicrm_contact): " . $e->getMessage());
+    }
+
+    return $filesInUse;
+  }
+
+  /**
+   * Batch check contribute files in contribution pages and message templates
+   *
+   * @param array $batch Array of filenames to check
+   * @return array Associative array with filename as key if file is in use
+   */
+  private static function batchCheckContributeFiles($batch) {
+    $filesInUse = [];
+
+    // Create LIKE conditions for batch
+    $likeConditions = [];
+    $params = [];
+    foreach ($batch as $index => $filename) {
+      $likeConditions[] = "intro_text LIKE %{$index} OR thankyou_text LIKE %{$index}";
+      $params[$index] = ['%' . $filename . '%', 'String'];
+    }
+
+    $whereClause = implode(' OR ', $likeConditions);
+
+    // Check contribution pages
+    $query = "SELECT intro_text, thankyou_text FROM civicrm_contribution_page WHERE {$whereClause}";
+
+    try {
+      $result = CRM_Core_DAO::executeQuery($query, $params);
+      while ($result->fetch()) {
+        // Check which files are referenced in the content
+        foreach ($batch as $filename) {
+          if (strpos($result->intro_text, $filename) !== false ||
+            strpos($result->thankyou_text, $filename) !== false) {
+            $filesInUse[$filename] = true;
+          }
+        }
+      }
+    } catch (Exception $e) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch contribute page check: " . $e->getMessage());
+    }
+
+    // Check message templates
+    $likeConditionsMsgTpl = [];
+    foreach ($batch as $index => $filename) {
+      $likeConditionsMsgTpl[] = "msg_html LIKE %{$index}";
+    }
+
+    $whereClauseMsgTpl = implode(' OR ', $likeConditionsMsgTpl);
+    $queryMsgTpl = "SELECT msg_html FROM civicrm_msg_template WHERE {$whereClauseMsgTpl}";
+
+    try {
+      $resultMsgTpl = CRM_Core_DAO::executeQuery($queryMsgTpl, $params);
+      while ($resultMsgTpl->fetch()) {
+        foreach ($batch as $filename) {
+          if (strpos($resultMsgTpl->msg_html, $filename) !== false) {
+            $filesInUse[$filename] = true;
+          }
+        }
+      }
+    } catch (Exception $e) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch message template check: " . $e->getMessage());
+    }
+
+    return $filesInUse;
+  }
+
+  /**
+   * Legacy method kept for compatibility - now redirects to batch processing
+   *
+   * @param string $filename Name of the file to check
+   * @param string $directory_type Type of directory being checked
+   * @return bool TRUE if file is referenced anywhere, FALSE if abandoned
+   */
+  public static function isFileInUse($filename, $directory_type = self::DIRECTORY_CUSTOM) {
+    // For single file checks, use batch method with single item
+    $result = self::batchCheckFilesInUse([$filename], $directory_type);
+    return isset($result[$filename]);
   }
 
   /**
@@ -296,7 +493,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @param string $directory_type Type of directory being checked
    * @return bool TRUE if file is referenced anywhere, FALSE if abandoned
    */
-  public static function isFileInUse($filename, $directory_type = self::DIRECTORY_CUSTOM) {
+  public static function isFileInUseOld($filename, $directory_type = self::DIRECTORY_CUSTOM) {
     // Check main civicrm_file table for direct file references
     if ($directory_type == self::DIRECTORY_CUSTOM) {
       $query = "
@@ -409,13 +606,13 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
     // Ensure backup directory exists
     if (!is_dir($backupDir)) {
-      mkdir($backupDir, 0755, TRUE);
+      mkdir($backupDir, 0775, TRUE);
     }
 
     // Create directory-specific backup folder
     $typeBackupDir = $backupDir . '/deleted_files_' . $directory_type;
     if (!is_dir($typeBackupDir)) {
-      mkdir($typeBackupDir, 0755, TRUE);
+      mkdir($typeBackupDir, 0775, TRUE);
     }
 
     // Create timestamped filename to prevent backup conflicts
@@ -509,10 +706,17 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
     // Create main backup directory with appropriate permissions
     if (!is_dir($backupDir)) {
-      if (!mkdir($backupDir, 0755, TRUE)) {
+      if (!mkdir($backupDir, 0775, TRUE)) {
         CRM_Core_Error::debug_log_message('FileAnalyzer: Failed to create backup directory');
         return FALSE;
       }
+    }
+    // Owner, group read/write/execute, and others read/execute
+    $permissions = 0775;
+    if (chmod($backupDir, $permissions)) {
+      CRM_Core_Error::debug_log_message('FileAnalyzer: file_analyzer_backups folder permissions set to ' . decoct($permissions));
+    } else {
+      CRM_Core_Error::debug_log_message('FileAnalyzer: Failed to change folder permissions');
     }
 
     // Create organized subdirectory structure
@@ -525,7 +729,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     foreach ($subdirs as $subdir) {
       $path = $backupDir . '/' . $subdir;
       if (!is_dir($path)) {
-        mkdir($path, 0755, TRUE);
+        mkdir($path, 0775, TRUE);
       }
     }
 
