@@ -5,7 +5,6 @@
  | Enhanced Dashboard Template with Preview and Export               |
  +--------------------------------------------------------------------+
 *}
-
 <div class="crm-container">
   <div class="crm-block crm-content-block">
 
@@ -70,7 +69,7 @@
             <i class="crm-i fa-exclamation-triangle"></i>
           </div>
           <div class="stat-content">
-            <div class="stat-number" id="abandonedCount">{$abandonedFiles|@count}</div>
+            <div class="stat-number" id="abandonedCount">{$directoryStats.abandonedFiles}</div>
             <div class="stat-label">{ts}Abandoned Files{/ts}</div>
           </div>
         </div>
@@ -80,7 +79,7 @@
             <i class="crm-i fa-trash"></i>
           </div>
           <div class="stat-content">
-            <div class="stat-number" id="wastedSpace">{$totalAbandonedSize|crmMoney:0:' ':' '}</div>
+            <div class="stat-number" id="wastedSpace">{$directoryStats.abandonedSize|crmMoney:0:' ':' '}</div>
             <div class="stat-label">{ts}Wasted Space{/ts}</div>
           </div>
         </div>
@@ -115,186 +114,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    {* Abandoned Files Section *}
-    <div class="file-analyzer-files">
-      <div class="files-panel">
-        <div class="panel-header">
-          <div class="header-left">
-            <h3 class="panel-title">
-              {ts}Abandoned Files{/ts}
-              <span class="file-count">({$abandonedFiles|@count} {ts}files{/ts})</span>
-            </h3>
-            <p class="panel-description">
-              {ts}Files that are not linked to any CiviCRM entity and can be safely deleted{/ts}
-            </p>
-          </div>
-          <div class="header-right">
-            {if $abandonedFiles|@count > 0}
-              <button class="button" onclick="previewSelectedFiles()" id="bulkPreviewBtn" style="display:none;">
-                <i class="crm-i fa-eye"></i> {ts}Preview Selected{/ts}
-              </button>
-              <button class="button danger" onclick="showBulkDeleteDialog()" id="bulkDeleteBtn" style="display:none;">
-                <i class="crm-i fa-trash"></i> {ts}Delete Selected{/ts}
-              </button>
-            {/if}
-          </div>
-        </div>
-
-        <div class="panel-body">
-          {if $abandonedFiles|@count == 0}
-            <div class="empty-state">
-              <div class="empty-icon">
-                <i class="crm-i fa-check-circle"></i>
-              </div>
-              <h4>{ts}No Abandoned Files Found!{/ts}</h4>
-              <p>{ts}All files are properly linked to CiviCRM entities.{/ts}</p>
-            </div>
-          {else}
-            <div class="table-container">
-              <table class="crm-table files-table">
-                <thead>
-                <tr>
-                  <th width="30">
-                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" />
-                  </th>
-                  <th>{ts}Filename{/ts}</th>
-                  <th width="80">{ts}Type{/ts}</th>
-                  <th width="100">{ts}Size{/ts}</th>
-                  <th width="120">{ts}Preview{/ts}</th>
-                  <th width="150">{ts}Modified{/ts}</th>
-                  <th width="150">{ts}Actions{/ts}</th>
-                </tr>
-                </thead>
-                <tbody>
-                {foreach from=$abandonedFiles item=file}
-                  <tr class="file-row" data-filename="{$file.filename}">
-                    <td>
-                      <input type="checkbox" class="file-checkbox" value="{$file.filename}" onchange="updateBulkActions()" />
-                    </td>
-                    <td>
-                      <div class="file-info">
-                        <strong class="filename">{$file.filenameOnly}</strong>
-                        <div class="file-path">{$file.path}</div>
-                      </div>
-                    </td>
-                    <td>
-                        <span class="file-extension ext-{$file.extension}">
-                          {$file.extension|upper}
-                        </span>
-                    </td>
-                    <td class="file-size">
-                        <span class="size-bytes" data-bytes="{$file.size}">
-                          {$file.size|crmMoney:0:' ':' '}
-                        </span>
-                    </td>
-                    <td class="file-preview">
-                      {if $file.can_preview}
-                        {if $file.preview_type == 'image'}
-                          <div class="preview-thumbnail" onclick="showImagePreview('{$file.preview_url}', '{$file.filenameOnly}')">
-                            <i class="crm-i fa-eye"></i>
-                            <span class="preview-label">{ts}Image{/ts}</span>
-                          </div>
-                        {elseif $file.preview_type == 'pdf'}
-                          <div class="preview-thumbnail" onclick="showFilePreview('{$file.preview_url}')">
-                            <i class="crm-i fa-file-pdf-o"></i>
-                            <span class="preview-label">{ts}PDF{/ts}</span>
-                          </div>
-                        {elseif $file.preview_type == 'text'}
-                          <div class="preview-thumbnail" onclick="showFilePreview('{$file.preview_url}')">
-                            <i class="crm-i fa-file-text-o"></i>
-                            <span class="preview-label">{ts}Text{/ts}</span>
-                          </div>
-                        {/if}
-                      {else}
-                        <span class="no-preview">
-                          <i class="crm-i fa-ban"></i>
-                          <span class="preview-label">{ts}N/A{/ts}</span>
-                        </span>
-                      {/if}
-                    </td>
-                    <td class="file-date">
-                      {$file.modified|crmDate:'%B %d, %Y at %I:%M %p'}
-                    </td>
-                    <td class="file-actions">
-                      <div class="action-buttons">
-                        <button class="button small" onclick="showFileInfo('{$file.filenameOnly}')" title="{ts}View Details{/ts}">
-                          <i class="crm-i fa-info"></i>
-                        </button>
-                        {if $file.can_preview}
-                          <button class="button small" onclick="showFilePreview('{$file.preview_url}')" title="{ts}Preview File{/ts}">
-                            <i class="crm-i fa-eye"></i>
-                          </button>
-                        {/if}
-                        <button class="button small danger" onclick="deleteFile('{$file.filenameOnly}')" title="{ts}Delete File{/ts}">
-                          <i class="crm-i fa-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                {/foreach}
-                </tbody>
-              </table>
-            </div>
-
-            {* Bulk Actions Bar *}
-            <div class="bulk-actions" id="bulkActionsBar" style="display:none;">
-              <div class="bulk-info">
-                <i class="crm-i fa-warning"></i>
-                <span class="bulk-message">
-                  <span id="selectedCount">0</span> {ts}files selected{/ts}
-                </span>
-              </div>
-              <div class="bulk-buttons">
-                <button class="button" onclick="clearSelection()">
-                  {ts}Clear Selection{/ts}
-                </button>
-                <button class="button" onclick="previewSelectedFiles()">
-                  <i class="crm-i fa-eye"></i> {ts}Preview Selected{/ts}
-                </button>
-                <button class="button danger" onclick="bulkDeleteFiles()">
-                  <i class="crm-i fa-trash"></i> {ts}Delete Selected{/ts}
-                </button>
-              </div>
-            </div>
-          {/if}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-{* Enhanced File Info Modal *}
-<div id="fileInfoModal" class="ui-dialog ui-widget ui-widget-content ui-corner-all" style="display:none;">
-  <div class="ui-dialog-titlebar ui-widget-header ui-corner-all ui-helper-clearfix">
-    <span class="ui-dialog-title">{ts}File Information{/ts}</span>
-    <button class="ui-dialog-titlebar-close ui-corner-all" onclick="closeFileInfoModal()">
-      <span class="ui-icon ui-icon-closethick">{ts}close{/ts}</span>
-    </button>
-  </div>
-  <div class="ui-dialog-content ui-widget-content" id="fileInfoContent">
-    <!-- Content will be populated by JavaScript -->
-  </div>
-</div>
-
-{* File Preview Modal *}
-<div id="filePreviewModal" class="preview-modal" style="display:none;">
-  <div class="preview-modal-overlay" onclick="closePreviewModal()"></div>
-  <div class="preview-modal-content">
-    <div class="preview-modal-header">
-      <h3 id="previewModalTitle">{ts}File Preview{/ts}</h3>
-      <div class="preview-modal-actions">
-        <button class="button" onclick="openFullPreview()" id="fullPreviewBtn">
-          <i class="crm-i fa-external-link"></i> {ts}Open Full View{/ts}
-        </button>
-        <button class="button" onclick="closePreviewModal()">
-          <i class="crm-i fa-times"></i> {ts}Close{/ts}
-        </button>
-      </div>
-    </div>
-    <div class="preview-modal-body" id="previewModalBody">
-      <!-- Preview content will be loaded here -->
     </div>
   </div>
 </div>

@@ -32,8 +32,7 @@ class CRM_Fileanalyzer_Page_Dashboard extends CRM_Core_Page {
     // Set the browser title and page heading
     CRM_Utils_System::setTitle(ts('File Analyzer Dashboard'));
 
-    // Retrieve the latest scan results from cached JSON file
-    // This avoids expensive real-time directory scanning
+    // Retrieve the latest scan results.
     $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM);
 
     // Handle case where no scan results are available
@@ -46,9 +45,11 @@ class CRM_Fileanalyzer_Page_Dashboard extends CRM_Core_Page {
         ],
         'directoryStats' => [
           'totalFiles' => 0,
-          'totalSize' => 0
+          'totalSize' => 0,
+          'abandonedSize' => 0,
+          'abandonedFiles' => 0,
         ],
-        'active_files' => 0
+        'active_files' => 0,
       ];
 
       CRM_Core_Session::setStatus(
@@ -61,19 +62,12 @@ class CRM_Fileanalyzer_Page_Dashboard extends CRM_Core_Page {
     // This date is used to inform users when the last scan was performed
     $this->assign('lastScanDate', $scanResults['scan_date']);
 
-    // Get abandoned files data from separate JSON file
-    // Abandoned files are stored separately for quick access
-    $abandonedFiles = CRM_Fileanalyzer_API_FileAnalysis::getAbandonedFilesFromJson(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM);
-
-    // Enhance abandoned files with preview capabilities
-    $abandonedFiles = $this->enhanceFilesWithPreviewInfo($abandonedFiles);
-
     // Assign file analysis data to template for chart rendering
     // JSON encode is needed for JavaScript chart libraries
     $this->assign('fileData', json_encode($scanResults['fileAnalysis']));
-
+    $abandonedFiles = [];
     // Assign enhanced abandoned files array to template for table display
-    $this->assign('abandonedFiles', $abandonedFiles);
+    // $this->assign('abandonedFiles', $abandonedFiles);
 
     // Assign directory statistics for summary widgets
     $this->assign('directoryStats', $scanResults['directoryStats']);

@@ -475,6 +475,7 @@
 
     updateStatistics: function() {
       var stats = FileAnalyzerData.directoryStats || {};
+      console.log(stats);
       var abandonedFiles = FileAnalyzerData.abandonedFiles || [];
 
       var totalAbandonedSize = abandonedFiles.reduce(function(sum, file) {
@@ -483,8 +484,8 @@
 
       $('#totalFiles').text(this.formatNumber(stats.totalFiles || 0));
       $('#totalSize').text(this.formatBytes(stats.totalSize || 0));
-      $('#abandonedCount').text(this.formatNumber(abandonedFiles.length));
-      $('#wastedSpace').text(this.formatBytes(totalAbandonedSize));
+      $('#abandonedCount').text(this.formatNumber(stats.abandonedFiles || 0));
+      $('#wastedSpace').text(this.formatBytes(stats.abandonedSize || 0));
     },
 
     updateSelection: function() {

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+
+<table>
+  <base>CRM/Fileanalyzer</base>
+  <class>FileanalyzerScan</class>
+  <name>civicrm_file_analyzer_scan</name>
+  <comment>Historical record of file analysis scans</comment>
+  <log>true</log>
+
+  <field>
+    <name>id</name>
+    <type>int unsigned</type>
+    <required>true</required>
+    <comment>Unique FileanalyzerScan ID</comment>
+    <html>
+      <type>Number</type>
+    </html>
+  </field>
+  <primaryKey>
+    <name>id</name>
+    <autoincrement>true</autoincrement>
+  </primaryKey>
+
+  <field>
+    <name>directory_type</name>
+    <type>varchar</type>
+    <length>20</length>
+    <required>true</required>
+    <comment>Directory type scanned</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_FileAnalyzerScan::getDirectoryTypes</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Directory Type</label>
+    </html>
+  </field>
+
+  <field>
+    <name>scan_date</name>
+    <type>datetime</type>
+    <required>true</required>
+    <comment>When scan was performed</comment>
+    <html>
+      <type>Select Date</type>
+      <label>Scan Date</label>
+    </html>
+  </field>
+
+  <field>
+    <name>total_files_scanned</name>
+    <type>int unsigned</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>Total files found</comment>
+    <html>
+      <type>Number</type>
+      <label>Total Files Scanned</label>
+    </html>
+  </field>
+
+  <field>
+    <name>active_files</name>
+    <type>int unsigned</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>Files with references</comment>
+    <html>
+      <type>Number</type>
+      <label>Active Files</label>
+    </html>
+  </field>
+
+  <field>
+    <name>abandoned_files</name>
+    <type>int unsigned</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>Files without references</comment>
+    <html>
+      <type>Number</type>
+      <label>Abandoned Files</label>
+    </html>
+  </field>
+
+  <field>
+    <name>total_size</name>
+    <type>bigint unsigned</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>Total size in bytes</comment>
+    <html>
+      <type>Number</type>
+      <label>Total Size</label>
+    </html>
+  </field>
+
+  <field>
+    <name>abandoned_size</name>
+    <type>bigint unsigned</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>Abandoned files size in bytes</comment>
+    <html>
+      <type>Number</type>
+      <label>Abandoned Size</label>
+    </html>
+  </field>
+
+  <field>
+    <name>scan_duration</name>
+    <type>int unsigned</type>
+    <comment>Scan duration in seconds</comment>
+    <html>
+      <type>Number</type>
+      <label>Scan Duration</label>
+    </html>
+  </field>
+
+  <field>
+    <name>scan_status</name>
+    <type>varchar</type>
+    <length>20</length>
+    <default>"running"</default>
+    <comment>Status: running, completed, failed</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_FileAnalyzerScan::getScanStatuses</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Scan Status</label>
+    </html>
+  </field>
+
+  <field>
+    <name>error_message</name>
+    <type>text</type>
+    <comment>Error details if scan failed</comment>
+    <html>
+      <type>TextArea</type>
+      <label>Error Message</label>
+    </html>
+  </field>
+
+  <field>
+    <name>statistics</name>
+    <type>text</type>
+    <comment>JSON with detailed statistics</comment>
+    <html>
+      <type>TextArea</type>
+      <label>Statistics</label>
+    </html>
+  </field>
+
+  <index>
+    <name>index_directory_type</name>
+    <fieldName>directory_type</fieldName>
+  </index>
+
+  <index>
+    <name>index_scan_date</name>
+    <fieldName>scan_date</fieldName>
+  </index>
+
+  <index>
+    <name>index_scan_status</name>
+    <fieldName>scan_status</fieldName>
+  </index>
+
+</table>

@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+
+<table>
+  <base>CRM/Fileanalyzer</base>
+  <class>Fileanalyzer</class>
+  <name>civicrm_file_analyzer</name>
+  <comment>Tracks all files in CiviCRM directories with metadata and usage status</comment>
+  <log>false</log>
+
+  <field>
+    <name>id</name>
+    <type>int unsigned</type>
+    <required>true</required>
+    <comment>Unique Fileanalyzer ID</comment>
+    <html>
+      <type>Number</type>
+    </html>
+  </field>
+  <primaryKey>
+    <name>id</name>
+    <autoincrement>true</autoincrement>
+  </primaryKey>
+
+  <field>
+    <name>file_id</name>
+    <type>int unsigned</type>
+    <comment>Reference to civicrm_file.id if linked</comment>
+    <html>
+      <type>EntityRef</type>
+      <label>File</label>
+    </html>
+  </field>
+  <foreignKey>
+    <name>file_id</name>
+    <table>civicrm_file</table>
+    <key>id</key>
+    <onDelete>SET NULL</onDelete>
+  </foreignKey>
+
+  <field>
+    <name>filename</name>
+    <type>varchar</type>
+    <length>255</length>
+    <required>true</required>
+    <comment>File name with extension</comment>
+    <html>
+      <type>Text</type>
+      <label>Filename</label>
+    </html>
+  </field>
+
+  <field>
+    <name>file_path</name>
+    <type>varchar</type>
+    <length>500</length>
+    <required>true</required>
+    <comment>Full file path on server</comment>
+    <html>
+      <type>Text</type>
+      <label>File Path</label>
+    </html>
+  </field>
+
+  <field>
+    <name>directory_type</name>
+    <type>varchar</type>
+    <length>20</length>
+    <required>true</required>
+    <comment>Directory type: custom, contribute</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_FileAnalyzer::getDirectoryTypes</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Directory Type</label>
+    </html>
+  </field>
+
+  <field>
+    <name>file_size</name>
+    <type>bigint unsigned</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>File size in bytes</comment>
+    <html>
+      <type>Number</type>
+      <label>File Size</label>
+    </html>
+  </field>
+
+  <field>
+    <name>file_extension</name>
+    <type>varchar</type>
+    <length>10</length>
+    <comment>File extension (pdf, jpg, png, etc)</comment>
+    <html>
+      <type>Text</type>
+      <label>File Extension</label>
+    </html>
+  </field>
+
+  <field>
+    <name>mime_type</name>
+    <type>varchar</type>
+    <length>100</length>
+    <comment>MIME type of the file</comment>
+    <html>
+      <type>Text</type>
+      <label>MIME Type</label>
+    </html>
+  </field>
+
+  <field>
+    <name>is_abandoned</name>
+    <type>boolean</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>Flag indicating if file is orphaned</comment>
+    <html>
+      <type>CheckBox</type>
+      <label>Is Abandoned</label>
+    </html>
+  </field>
+
+  <field>
+    <name>is_active</name>
+    <type>boolean</type>
+    <default>1</default>
+    <required>true</required>
+    <comment>Flag indicating if file still exists on filesystem</comment>
+    <html>
+      <type>CheckBox</type>
+      <label>Is Active</label>
+    </html>
+  </field>
+
+  <field>
+    <name>created_date</name>
+    <type>datetime</type>
+    <comment>File creation date from filesystem</comment>
+    <html>
+      <type>Select Date</type>
+      <label>Created Date</label>
+    </html>
+  </field>
+
+  <field>
+    <name>modified_date</name>
+    <type>datetime</type>
+    <comment>File last modification date</comment>
+    <html>
+      <type>Select Date</type>
+      <label>Modified Date</label>
+    </html>
+  </field>
+
+  <field>
+    <name>last_scanned_date</name>
+    <type>datetime</type>
+    <comment>Last time this file was scanned</comment>
+    <html>
+      <type>Select Date</type>
+      <label>Last Scanned Date</label>
+    </html>
+  </field>
+
+  <field>
+    <name>scan_status</name>
+    <type>varchar</type>
+    <length>20</length>
+    <default>"pending"</default>
+    <comment>Status: pending, scanned, deleted, error</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_FileAnalyzer::getScanStatuses</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Scan Status</label>
+    </html>
+  </field>
+
+  <field>
+    <name>is_contact_file</name>
+    <type>boolean</type>
+    <default>1</default>
+    <required>true</required>
+    <comment>Flag indicating if file is belong contact image</comment>
+    <html>
+      <type>CheckBox</type>
+      <label>Is Active</label>
+    </html>
+  </field>
+
+  <field>
+    <name>contact_id</name>
+    <type>int unsigned</type>
+    <comment>FK to Contact</comment>
+  </field>
+  <foreignKey>
+    <name>contact_id</name>
+    <table>civicrm_contact</table>
+    <key>id</key>
+    <onDelete>CASCADE</onDelete>
+  </foreignKey>
+
+  <index>
+    <name>UK_file_path_directory</name>
+    <fieldName>file_path</fieldName>
+    <fieldName>directory_type</fieldName>
+    <unique>true</unique>
+  </index>
+
+  <index>
+    <name>index_directory_type</name>
+    <fieldName>directory_type</fieldName>
+  </index>
+
+  <index>
+    <name>index_is_abandoned</name>
+    <fieldName>is_abandoned</fieldName>
+  </index>
+
+  <index>
+    <name>index_file_extension</name>
+    <fieldName>file_extension</fieldName>
+  </index>
+
+  <index>
+    <name>index_scan_status</name>
+    <fieldName>scan_status</fieldName>
+  </index>
+
+  <index>
+    <name>index_modified_date</name>
+    <fieldName>modified_date</fieldName>
+  </index>
+
+</table>

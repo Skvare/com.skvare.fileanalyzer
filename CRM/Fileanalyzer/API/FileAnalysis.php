@@ -3,458 +3,1118 @@
 use CRM_Fileanalyzer_ExtensionUtil as E;
 
 /**
- * CRM File Analyzer API Class - Enhanced with Contribute Images Support
+ * CRM File Analyzer API Class - Database-Driven Architecture
  *
  * This class provides comprehensive functionality for analyzing and managing file usage
- * within a CiviCRM system. It now supports both custom uploads and contribute page images.
+ * within a CiviCRM system using a database-backed approach instead of JSON files.
  *
  * Main features:
+ * - Database-driven file tracking with full metadata
  * - Support for multiple directory types (custom uploads and contribute images)
- * - Scheduled scanning for unused/abandoned files with comprehensive analysis
- * - Automatic deletion of old files with configurable retention periods
- * - Backup functionality before file deletion with organized storage
- * - Integration with CiviCRM settings system
- * - JSON-based reporting and data persistence
- * - File type and temporal analysis (monthly statistics)
- * - Database integrity checking across multiple CiviCRM tables
+ * - Real-time reference tracking and validation
+ * - Comprehensive audit trail for deletions
+ * - Historical scan statistics and reporting
+ * - Efficient batch processing with database transactions
  */
 class CRM_Fileanalyzer_API_FileAnalysis {
 
   const DIRECTORY_CUSTOM = 'custom';
   const DIRECTORY_CONTRIBUTE = 'contribute';
 
+  const SCAN_STATUS_PENDING = 'pending';
+  const SCAN_STATUS_SCANNED = 'scanned';
+  const SCAN_STATUS_DELETED = 'deleted';
+  const SCAN_STATUS_ERROR = 'error';
+
+  const REFERENCE_FILE_RECORD = 'file_record';
+  const REFERENCE_CONTACT_IMAGE = 'contact_image';
+  const REFERENCE_CONTRIBUTION_PAGE = 'contribution_page';
+  const REFERENCE_MESSAGE_TEMPLATE = 'message_template';
+  const REFERENCE_CUSTOM_FIELD = 'custom_field';
+
   /**
    * Main scheduled job entry point for file analysis and cleanup
    *
-   * This method orchestrates the complete file analysis workflow for all supported directories:
-   * 1. Sets up required directories and backup structure
-   * 2. Performs comprehensive file system scan for both custom and contribute directories
-   * 3. Analyzes files for database references
-   * 4. Generates detailed reports with statistics
-   * 5. Optionally performs automatic cleanup of abandoned files
-   * 6. Persists results to JSON files for later access
-   *
    * @param string $directory_type Optional directory type to scan (custom|contribute|all)
    * @return array Status array with detailed execution results
-   *   - is_error: 0 for success, 1 for error
-   *   - messages: Array of detailed status messages including counts
-   *   - data: Optional scan results data
    */
   public static function scheduledScan($directory_type = 'all') {
     // Load extension configuration settings from CiviCRM
     $settings = self::getSettings();
-
-    // Get paths for file operations
-    $customPath = CRM_Core_Config::singleton()->uploadDir;
-    $backupDir = $customPath . 'file_analyzer_backups';
-
-    // Ensure all required directories exist before proceeding
-    self::createDirectories();
-
+    $startTime = time();
     $totalDeleted = 0;
     $totalAbandonedFiles = 0;
     $totalFiles = 0;
     $scanResults = [];
-    // Scan custom directory if requested
-    if ($directory_type === 'all' || $directory_type === self::DIRECTORY_CUSTOM) {
-      $customResults = self::performFileScan(self::DIRECTORY_CUSTOM);
-      $scanResults[self::DIRECTORY_CUSTOM] = $customResults;
 
-      // Persist abandoned files list for custom directory
-      $abandonedFilesPath = $backupDir . '/abandoned_files_custom.json';
-      file_put_contents($abandonedFilesPath, json_encode($customResults['abandoned_files'], JSON_PRETTY_PRINT));
+    // Create backup directory structure
+    self::createDirectories();
 
-      // Calculate total abandoned files across all directories
-      $totalAbandonedFiles += count($customResults['abandoned_files']);
-      $totalFiles += $customResults['directoryStats']['totalFiles'];
-      unset($customResults['abandoned_files']);
-
-      // Maintain latest scan results file for quick UI access
-      $latestScanPath = $backupDir . '/latest_scan_results_custom.json';
-      file_put_contents($latestScanPath, json_encode($customResults, JSON_PRETTY_PRINT));
-
-      // Create timestamped scan results file for historical tracking
-      $scanResultsPath = $backupDir . '/scan_results_' . date('Y-m-d_H-i-s') . '.json';
-      file_put_contents($scanResultsPath, json_encode($customResults, JSON_PRETTY_PRINT));
-
-      // Execute automatic cleanup if enabled
-      if ($settings['auto_delete'] && $settings['auto_delete_days']) {
-        $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$settings['auto_delete_days']} days"));
-        $deletedCount = self::autoDeleteAbandonedFiles($cutoffDate, $settings['backup_before_delete'], $customResults['abandoned_files'], self::DIRECTORY_CUSTOM);
-        $totalDeleted += $deletedCount;
+    try {
+      // Determine which directories to scan
+      $directoriesToScan = [];
+      if ($directory_type === 'all') {
+        $directoriesToScan = [self::DIRECTORY_CUSTOM, self::DIRECTORY_CONTRIBUTE];
       }
-    }
-
-    // Scan contribute directory if requested
-    if ($directory_type === 'all' || $directory_type === self::DIRECTORY_CONTRIBUTE) {
-      $contributeResults = self::performFileScan(self::DIRECTORY_CONTRIBUTE);
-      $scanResults[self::DIRECTORY_CONTRIBUTE] = $contributeResults;
-
-      // Persist abandoned files list for contribute directory
-      $abandonedFilesPath = $backupDir . '/abandoned_files_contribute.json';
-      file_put_contents($abandonedFilesPath, json_encode($contributeResults['abandoned_files'], JSON_PRETTY_PRINT));
-
-      // Calculate total abandoned files across all directories
-      $totalAbandonedFiles += count($contributeResults['abandoned_files']);
-      $totalFiles += $contributeResults['directoryStats']['totalFiles'];
-      unset($contributeResults['abandoned_files']);
-
-      // Maintain latest scan results file for quick UI access
-      $latestScanPath = $backupDir . '/latest_scan_results_contribute.json';
-      file_put_contents($latestScanPath, json_encode($contributeResults, JSON_PRETTY_PRINT));
-
-      // Create timestamped scan results file for historical tracking
-      $scanResultsPath = $backupDir . '/scan_results_' . date('Y-m-d_H-i-s') . '.json';
-      file_put_contents($scanResultsPath, json_encode($contributeResults, JSON_PRETTY_PRINT));
-
-
-      // Execute automatic cleanup if enabled
-      if ($settings['auto_delete'] && $settings['auto_delete_days']) {
-        $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$settings['auto_delete_days']} days"));
-        $deletedCount = self::autoDeleteAbandonedFiles($cutoffDate, $settings['backup_before_delete'], $contributeResults['abandoned_files'], self::DIRECTORY_CONTRIBUTE);
-        $totalDeleted += $deletedCount;
+      else {
+        $directoriesToScan = [$directory_type];
       }
-    }
 
-    // Log deletion activity for audit trail and troubleshooting
-    if ($totalDeleted > 0) {
-      CRM_Core_Error::debug_log_message("File Analyzer: Auto-deleted {$totalDeleted} abandoned files");
-    }
+      // Process each directory
+      foreach ($directoriesToScan as $dirType) {
+        // Create scan record
+        $scanId = self::createScanRecord($dirType);
 
-    // Return comprehensive status information
-    return [
-      'is_error' => 0,
-      'messages' => [
-        "Scan completed for {$directory_type} directory(ies). Found {$totalAbandonedFiles} abandoned files",
-        "Total files scanned: {$totalFiles}",
-        "Auto-deleted: {$totalDeleted} files"
-      ],
-      //'data' => $scanResults
-    ];
+        try {
+          // Perform comprehensive file scan
+          $scanResult = self::performFileScanDB($dirType, $scanId);
+          $scanResults[$dirType] = $scanResult;
+
+          $totalAbandonedFiles += $scanResult['abandoned_count'];
+          $totalFiles += $scanResult['total_files'];
+
+          // Update scan record with results
+          self::updateScanRecord($scanId, [
+            'scan_status' => 'completed',
+            'total_files_scanned' => $scanResult['total_files'],
+            'active_files' => $scanResult['active_files'],
+            'abandoned_files' => $scanResult['abandoned_count'],
+            'total_size' => $scanResult['total_size'],
+            'abandoned_size' => $scanResult['abandoned_size'],
+            'scan_duration' => time() - $startTime,
+            'statistics' => json_encode($scanResult['statistics']),
+          ]);
+
+          // Execute automatic cleanup if enabled
+          if ($settings['auto_delete'] && $settings['auto_delete_days']) {
+            $cutoffDate = date('Y-m-d H:i:s', strtotime("-{$settings['auto_delete_days']} days"));
+            $deletedCount = self::autoDeleteAbandonedFilesDB(
+              $cutoffDate,
+              $settings['backup_before_delete'],
+              $dirType
+            );
+            $totalDeleted += $deletedCount;
+          }
+
+        }
+        catch (Exception $e) {
+          // Update scan record with error
+          self::updateScanRecord($scanId, [
+            'scan_status' => 'failed',
+            'error_message' => $e->getMessage(),
+            'scan_duration' => time() - $startTime,
+          ]);
+          throw $e;
+        }
+      }
+
+      // Log deletion activity
+      if ($totalDeleted > 0) {
+        CRM_Core_Error::debug_log_message(
+          "File Analyzer: Auto-deleted {$totalDeleted} abandoned files"
+        );
+      }
+
+      return [
+        'is_error' => 0,
+        'messages' => [
+          "Scan completed for {$directory_type} directory(ies). Found {$totalAbandonedFiles} abandoned files",
+          "Total files scanned: {$totalFiles}",
+          "Auto-deleted: {$totalDeleted} files"
+        ],
+        'data' => $scanResults
+      ];
+
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message(
+        "File Analyzer: Scan failed - " . $e->getMessage()
+      );
+      return [
+        'is_error' => 1,
+        'error_message' => $e->getMessage(),
+      ];
+    }
   }
 
   /**
-   * Perform comprehensive file system scan and analysis for specific directory type
+   * Perform comprehensive file system scan with database storage
    *
-   * This method executes the core file analysis logic:
-   * 1. Scans all files in the specified directory recursively
-   * 2. Filters files based on excluded extensions
-   * 3. Checks database references to identify abandoned files
-   * 4. Generates statistical analysis by file type and time period
-   * 5. Calculates storage usage metrics
-   *
-   * @param string $directory_type Type of directory to scan (custom|contribute)
-   * @return array Comprehensive scan results including:
-   *   - scan_date: Timestamp of scan execution
-   *   - directory_type: Type of directory scanned
-   *   - abandoned_files: Array of files not referenced in database
-   *   - fileAnalysis: Statistical breakdowns by month and file type
-   *   - directoryStats: Total file count and storage usage
-   *   - active_files: Count of files still in use
+   * @param string $directory_type Type of directory to scan
+   * @param int $scanId Scan record ID
+   * @return array Comprehensive scan results
    */
-  private static function performFileScan($directory_type) {
-    CRM_Core_Error::debug_log_message("File Analyzer: Starting scan of {$directory_type} directory");
+  private static function performFileScanDB($directory_type, $scanId) {
+    CRM_Core_Error::debug_log_message(
+      "File Analyzer: Starting DB scan of {$directory_type} directory"
+    );
+
     $scanPath = self::getDirectoryPath($directory_type);
     $files = self::scanDirectoryRecursive($scanPath);
     $settings = self::getSettings();
 
-    $scanResults = [
-      'scan_date' => date('Y-m-d H:i:s'), // When this scan was performed
-      'directory_type' => $directory_type,       // Type of directory scanned
-      'abandoned_files' => [],                   // Files not referenced in database
-      'fileAnalysis' => [                        // Statistical analysis
-        'monthly' => [],                         // Files grouped by modification month
-        'fileTypes' => []                        // Files grouped by extension
-      ],
-      'directoryStats' => [                      // Overall directory metrics
-        'totalSize' => 0,                        // Total bytes consumed
-        'totalFiles' => 0                        // Total file count
-      ],
-      'active_files' => 0,                       // Count of files still in use
+    $statistics = [
+      'fileTypes' => [],
+      'monthly' => [],
+      'size_distribution' => [],
     ];
 
-    $totalFiles = count($files);
-    CRM_Core_Error::debug_log_message('File Analyzer: Scanning ' . $totalFiles . " files in {$directory_type} directory");
+    $totalSize = 0;
+    $abandonedSize = 0;
+    $activeCount = 0;
+    $abandonedCount = 0;
 
-    // Build file info array first (without database calls)
-    $fileInfoArray = [];
-    $filenames = [];
+    // Use database transaction for consistency
+    $transaction = new CRM_Core_Transaction();
 
-    foreach ($files as $file) {
-      $fullPath = $scanPath . '/' . $file;
+    try {
+      foreach ($files as $file) {
+        $fullPath = $scanPath . '/' . $file;
 
-      // Skip invalid files or directories
-      if (!is_file($fullPath)) {
-        continue;
+        if (!is_file($fullPath)) {
+          continue;
+        }
+
+        $stat = stat($fullPath);
+        $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+        // Skip excluded extensions
+        if (in_array($extension, $settings['excluded_extensions'])) {
+          continue;
+        }
+
+        $filename = basename($file);
+        $fileSize = $stat['size'];
+        $modifiedDate = date('Y-m-d H:i:s', $stat['mtime']);
+        $createdDate = date('Y-m-d H:i:s', $stat['ctime']);
+
+        // Check if file already exists in database
+        $existingFile = self::getFileRecordByPath($fullPath, $directory_type);
+
+        // Check if file is in use
+        $fileInUse = self::checkFileUsageDB($filename, $directory_type);
+        $isAbandoned = !$fileInUse['in_use'];
+
+        // Update statistics
+        $totalSize += $fileSize;
+        if ($isAbandoned) {
+          $abandonedSize += $fileSize;
+          $abandonedCount++;
+        }
+        else {
+          $activeCount++;
+        }
+
+        // Build monthly statistics
+        $month = date('Y-m', $stat['mtime']);
+        if (!isset($statistics['monthly'][$month])) {
+          $statistics['monthly'][$month] = [
+            'count' => 0,
+            'size' => 0,
+            'abandoned_count' => 0,
+          ];
+        }
+        $statistics['monthly'][$month]['count']++;
+        $statistics['monthly'][$month]['size'] += $fileSize;
+        if ($isAbandoned) {
+          $statistics['monthly'][$month]['abandoned_count']++;
+        }
+
+        // Build file type statistics
+        if (!isset($statistics['fileTypes'][$extension])) {
+          $statistics['fileTypes'][$extension] = [
+            'count' => 0,
+            'size' => 0,
+            'abandoned_count' => 0,
+          ];
+        }
+        $statistics['fileTypes'][$extension]['count']++;
+        $statistics['fileTypes'][$extension]['size'] += $fileSize;
+        if ($isAbandoned) {
+          $statistics['fileTypes'][$extension]['abandoned_count']++;
+        }
+
+        // Prepare file record data
+        $fileData = [
+          'filename' => $filename,
+          'file_path' => $fullPath,
+          'directory_type' => $directory_type,
+          'file_size' => $fileSize,
+          'file_extension' => $extension,
+          'mime_type' => self::getMimeType($fullPath),
+          'is_abandoned' => $isAbandoned ? 1 : 0,
+          'is_active' => 1,
+          'created_date' => $createdDate,
+          'modified_date' => $modifiedDate,
+          'last_scanned_date' => date('Y-m-d H:i:s'),
+          'scan_status' => self::SCAN_STATUS_SCANNED,
+        ];
+
+        // Link to civicrm_file if found
+        if ($fileInUse['file_id']) {
+          $fileData['file_id'] = $fileInUse['file_id'];
+        }
+
+        // Insert or update file record
+        if ($existingFile) {
+          self::updateFileRecord($existingFile['id'], $fileData);
+          $fileAnalyzerId = $existingFile['id'];
+        }
+        else {
+          $fileAnalyzerId = self::createFileRecord($fileData);
+        }
+
+        // Store file references
+        if (!empty($fileInUse['references'])) {
+          self::storeFileReferences($fileAnalyzerId, $fileInUse['references']);
+        }
+        else {
+          // Clear old references if file is now abandoned
+          self::clearFileReferences($fileAnalyzerId);
+        }
       }
 
-      // Get file system metadata
-      $stat = stat($fullPath);
-      $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+      // Mark files that no longer exist on filesystem as inactive
+      self::markMissingFilesInactive($directory_type, $scanPath);
 
-      // Skip files with excluded extensions (e.g., system files, logs)
-      if (in_array($extension, $settings['excluded_extensions'])) {
-        continue;
-      }
+      $transaction->commit();
 
-      $filename = basename($file);
-      $fileInfo = [
-        'filename' => $file, // Relative file path
-        'filenameOnly' => $filename,  // Just the filename
-        'size' => $stat['size'], // File size in bytes
-        'modified' => date('Y-m-d H:i:s', $stat['mtime']), // Last modification
-        'extension' => $extension, // File extension for categorization
-        'path' => $fullPath, // Full file path for operations
-        'directory_type' => $directory_type, //  Which directory this file belongs to
+      return [
+        'total_files' => count($files),
+        'active_files' => $activeCount,
+        'abandoned_count' => $abandonedCount,
+        'total_size' => $totalSize,
+        'abandoned_size' => $abandonedSize,
+        'statistics' => $statistics,
       ];
 
-      $fileInfoArray[] = $fileInfo;
-      $filenames[] = $filename;
-    }
-
-    // Now perform batch database check
-    CRM_Core_Error::debug_log_message('File Analyzer: Performing batch database check for ' . count($filenames) . ' files');
-    $filesInUse = self::batchCheckFilesInUse($filenames, $directory_type);
-
-    // Process results
-    $abandonedCount = 0;
-    foreach ($fileInfoArray as $fileInfo) {
-      $filename = $fileInfo['filenameOnly'];
-      $extension = $fileInfo['extension'];
-      $stat_size = $fileInfo['size'];
-      $month = date('Y-m', strtotime($fileInfo['modified']));
-
-      // Check if file is in use from batch results
-      $fileInfo['in_use'] = isset($filesInUse[$filename]);
-
-      // Update overall statistics
-      $scanResults['directoryStats']['totalFiles']++;
-      $scanResults['directoryStats']['totalSize'] += $stat_size;
-
-      // Categorize file based on database usage
-      if ($fileInfo['in_use']) {
-        // File is referenced in database - increment active counter
-        $scanResults['active_files']++;
-      }
-      else {
-        // File is not referenced - add to abandoned list for potential cleanup
-        $scanResults['abandoned_files'][] = $fileInfo;
-        $abandonedCount++;
-      }
-
-      // Build file type statistics
-      if (!isset($scanResults['fileAnalysis']['fileTypes'][$extension])) {
-        $scanResults['fileAnalysis']['fileTypes'][$extension] = [
-          'count' => 0,           // Total files of this type
-          'size' => 0,            // Total bytes for this file type
-          'abandoned_count' => 0  // How many of this type are abandoned
-        ];
-      }
-      $scanResults['fileAnalysis']['fileTypes'][$extension]['count']++;
-      $scanResults['fileAnalysis']['fileTypes'][$extension]['size'] += $stat_size;
-      if (!$fileInfo['in_use']) {
-        $scanResults['fileAnalysis']['fileTypes'][$extension]['abandoned_count']++;
-      }
-
-      // Build monthly statistics
-      if (!isset($scanResults['fileAnalysis']['monthly'][$month])) {
-        $scanResults['fileAnalysis']['monthly'][$month] = [
-          'count' => 0, // Files created/modified this month
-          'size' => 0, // Total bytes for this month
-          'abandoned_count' => 0 // Abandoned files from this month
-        ];
-      }
-      $scanResults['fileAnalysis']['monthly'][$month]['count']++;
-      $scanResults['fileAnalysis']['monthly'][$month]['size'] += $stat_size;
-      if (!$fileInfo['in_use']) {
-        $scanResults['fileAnalysis']['monthly'][$month]['abandoned_count']++;
-      }
-    }
-
-    CRM_Core_Error::debug_log_message("File Analyzer: Found {$abandonedCount} abandoned files out of " . count($fileInfoArray));
-    return $scanResults;
-  }
-
-  /**
-   * Batch check if files are referenced in CiviCRM database tables
-   * This replaces individual calls with efficient batch queries
-   *
-   * @param array $filenames Array of filenames to check
-   * @param string $directory_type Type of directory being checked
-   * @return array Associative array with filename as key if file is in use
-   */
-  private static function batchCheckFilesInUse($filenames, $directory_type = self::DIRECTORY_CUSTOM) {
-    $filesInUse = [];
-
-    if (empty($filenames)) {
-      return $filesInUse;
-    }
-
-    // Process in batches to avoid query length limits
-    $batchSize = 50; // Adjust based on your MySQL max_allowed_packet
-    $batches = array_chunk($filenames, $batchSize);
-
-    foreach ($batches as $batchIndex => $batch) {
-      CRM_Core_Error::debug_log_message("File Analyzer: Processing batch " . ($batchIndex + 1) . " of " . count($batches));
-
-      if ($directory_type == self::DIRECTORY_CUSTOM) {
-        $filesInUse = array_merge($filesInUse, self::batchCheckCustomFiles($batch));
-      } else if ($directory_type === self::DIRECTORY_CONTRIBUTE) {
-        $filesInUse = array_merge($filesInUse, self::batchCheckContributeFiles($batch));
-      }
-    }
-
-    return $filesInUse;
-  }
-
-  /**
-   * Batch check custom files in civicrm_file table
-   *
-   * @param array $batch Array of filenames to check
-   * @return array Associative array with filename as key if file is in use
-   */
-  private static function batchCheckCustomFiles($batch) {
-    $filesInUse = [];
-
-    // Create placeholders for IN clause
-    $placeholders = [];
-    $params = [];
-    foreach ($batch as $index => $filename) {
-      $placeholders[] = "%{$index}";
-      $params[$index] = [$filename, 'String'];
-    }
-
-    $placeholderString = implode(',', $placeholders);
-
-    // Query for exact matches and partial matches
-    $query = "
-    SELECT DISTINCT uri as filename
-    FROM civicrm_file 
-    WHERE uri IN ({$placeholderString})";
-
-    try {
-      $result = CRM_Core_DAO::executeQuery($query, $params);
-      while ($result->fetch()) {
-        if ($result->filename) {
-          $filesInUse[$result->filename] = TRUE;
-        }
-      }
     }
     catch (Exception $e) {
-      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch custom file check: " . $e->getMessage());
+      $transaction->rollback();
+      throw $e;
     }
+  }
 
-    // Check civicrm_contact table for image_URL references
-    // Use a simpler approach that's more reliable across MySQL versions
-    try {
+  /**
+   * Check file usage in database and return detailed information
+   *
+   * @param string $filename Filename to check
+   * @param string $directory_type Directory type
+   * @return array Usage information with references
+   */
+  private static function checkFileUsageDB($filename, $directory_type) {
+    $result = [
+      'in_use' => FALSE,
+      'file_id' => NULL,
+      'references' => [],
+    ];
+
+    if ($directory_type == self::DIRECTORY_CUSTOM) {
+      // Check civicrm_file table
+      $fileQuery = "
+        SELECT id, uri, mime_type, description
+        FROM civicrm_file
+        WHERE uri = %1 OR uri LIKE %2
+        LIMIT 1
+      ";
+      $fileParams = [
+        1 => [$filename, 'String'],
+        2 => ['%' . $filename, 'String'],
+      ];
+
+      $fileResult = CRM_Core_DAO::executeQuery($fileQuery, $fileParams);
+      if ($fileResult->fetch()) {
+        $result['in_use'] = TRUE;
+        $result['file_id'] = $fileResult->id;
+        $result['references'][] = [
+          'reference_type' => self::REFERENCE_FILE_RECORD,
+          'entity_table' => 'civicrm_file',
+          'entity_id' => $fileResult->id,
+          'details' => json_encode([
+            'uri' => $fileResult->uri,
+            'mime_type' => $fileResult->mime_type,
+            'description' => $fileResult->description,
+          ]),
+        ];
+
+        // Check entity file relationships
+        $entityQuery = "
+          SELECT entity_table, entity_id
+          FROM civicrm_entity_file
+          WHERE file_id = %1
+        ";
+        $entityParams = [1 => [$fileResult->id, 'Integer']];
+        $entityResult = CRM_Core_DAO::executeQuery($entityQuery, $entityParams);
+
+        while ($entityResult->fetch()) {
+          $result['references'][] = [
+            'reference_type' => self::REFERENCE_FILE_RECORD,
+            'entity_table' => $entityResult->entity_table,
+            'entity_id' => $entityResult->entity_id,
+            'details' => json_encode([
+              'linked_through_file_id' => $fileResult->id,
+            ]),
+          ];
+        }
+      }
+
+      // Check contact image_URL
       $contactQuery = "
-      SELECT DISTINCT image_URL
-      FROM civicrm_contact 
-      WHERE image_URL IS NOT NULL AND image_URL != '' ";
+        SELECT id, image_URL
+        FROM civicrm_contact
+        WHERE image_URL LIKE %1
+        LIMIT 5
+      ";
+      $contactParams = [1 => ['%' . $filename . '%', 'String']];
+      $contactResult = CRM_Core_DAO::executeQuery($contactQuery, $contactParams);
 
-      $contactResult = CRM_Core_DAO::executeQuery($contactQuery);
       while ($contactResult->fetch()) {
-        $imageUrl = $contactResult->image_URL;
+        $result['in_use'] = TRUE;
+        $result['references'][] = [
+          'reference_type' => self::REFERENCE_CONTACT_IMAGE,
+          'entity_table' => 'civicrm_contact',
+          'entity_id' => $contactResult->id,
+          'field_name' => 'image_URL',
+          'details' => json_encode([
+            'image_url' => $contactResult->image_URL,
+          ]),
+        ];
+      }
 
-        // Check each filename in the batch against this image URL
-        foreach ($batch as $filename) {
-          // Check if filename appears in the URL in any of these formats:
-          // 1. As query parameter: ?photo=filename.jpg
-          // 2. In path: /files/civicrm/custom/filename.jpg
-          // 3. Direct match
-          if (str_contains($imageUrl, $filename)) {
-            $filesInUse[$filename] = TRUE;
-          }
+    }
+    elseif ($directory_type === self::DIRECTORY_CONTRIBUTE) {
+      // Check contribution pages
+      $contributeQuery = "
+        SELECT id, title, intro_text, thankyou_text
+        FROM civicrm_contribution_page
+        WHERE intro_text LIKE %1 OR thankyou_text LIKE %1
+      ";
+      $contributeParams = [1 => ['%' . $filename . '%', 'String']];
+      $contributeResult = CRM_Core_DAO::executeQuery($contributeQuery, $contributeParams);
+
+      while ($contributeResult->fetch()) {
+        $result['in_use'] = TRUE;
+        $foundIn = [];
+        if (strpos($contributeResult->intro_text, $filename) !== FALSE) {
+          $foundIn[] = 'intro_text';
         }
+        if (strpos($contributeResult->thankyou_text, $filename) !== FALSE) {
+          $foundIn[] = 'thankyou_text';
+        }
+
+        $result['references'][] = [
+          'reference_type' => self::REFERENCE_CONTRIBUTION_PAGE,
+          'entity_table' => 'civicrm_contribution_page',
+          'entity_id' => $contributeResult->id,
+          'field_name' => implode(',', $foundIn),
+          'details' => json_encode([
+            'title' => $contributeResult->title,
+            'found_in' => $foundIn,
+          ]),
+        ];
+      }
+
+      // Check message templates
+      $templateQuery = "
+        SELECT id, msg_title, msg_subject, msg_html
+        FROM civicrm_msg_template
+        WHERE msg_html LIKE %1
+      ";
+      $templateParams = [1 => ['%' . $filename . '%', 'String']];
+      $templateResult = CRM_Core_DAO::executeQuery($templateQuery, $templateParams);
+
+      while ($templateResult->fetch()) {
+        $result['in_use'] = TRUE;
+        $result['references'][] = [
+          'reference_type' => self::REFERENCE_MESSAGE_TEMPLATE,
+          'entity_table' => 'civicrm_msg_template',
+          'entity_id' => $templateResult->id,
+          'field_name' => 'msg_html',
+          'details' => json_encode([
+            'msg_title' => $templateResult->msg_title,
+            'msg_subject' => $templateResult->msg_subject,
+          ]),
+        ];
       }
     }
-    catch (Exception $e) {
-      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch custom file check (civicrm_contact): " . $e->getMessage());
-    }
 
-    return $filesInUse;
+    return $result;
   }
 
   /**
-   * Batch check contribute files in contribution pages and message templates
+   * Store file references in database
    *
-   * @param array $batch Array of filenames to check
-   * @return array Associative array with filename as key if file is in use
+   * @param int $fileAnalyzerId File analyzer record ID
+   * @param array $references Array of reference data
    */
-  private static function batchCheckContributeFiles($batch) {
-    $filesInUse = [];
+  private static function storeFileReferences($fileAnalyzerId, $references) {
+    // Clear existing references
+    self::clearFileReferences($fileAnalyzerId);
 
-    // Create LIKE conditions for batch
-    $likeConditions = [];
+    // Insert new references
+    foreach ($references as $ref) {
+      $params = [
+        'file_analyzer_id' => $fileAnalyzerId,
+        'reference_type' => $ref['reference_type'],
+        'entity_table' => CRM_Utils_Array::value('entity_table', $ref),
+        'entity_id' => CRM_Utils_Array::value('entity_id', $ref),
+        'field_name' => CRM_Utils_Array::value('field_name', $ref),
+        'reference_details' => CRM_Utils_Array::value('details', $ref),
+        'created_date' => date('Y-m-d H:i:s'),
+        'last_verified_date' => date('Y-m-d H:i:s'),
+        'is_active' => 1,
+      ];
+      $sql = CRM_Core_DAO::composeQuery(
+        "INSERT INTO civicrm_file_analyzer_reference 
+        (file_analyzer_id, reference_type, entity_table, entity_id, field_name, 
+         reference_details, created_date, last_verified_date, is_active)
+        VALUES (%1, %2, %3, %4, %5, %6, %7, %8, %9)",
+        [
+          1 => [$params['file_analyzer_id'], 'Integer'],
+          2 => [$params['reference_type'], 'String'],
+          3 => [$params['entity_table'], 'String'],
+          4 => [$params['entity_id'], 'Integer'],
+          5 => [$params['field_name'] ?? '', 'String'],
+          6 => [$params['reference_details'], 'String'],
+          7 => [$params['created_date'], 'String'],
+          8 => [$params['last_verified_date'], 'String'],
+          9 => [$params['is_active'], 'Integer'],
+        ]
+      );
+      CRM_Core_DAO::executeQuery($sql);
+    }
+  }
+
+  /**
+   * Clear file references
+   *
+   * @param int $fileAnalyzerId File analyzer record ID
+   */
+  private static function clearFileReferences($fileAnalyzerId) {
+    CRM_Core_DAO::executeQuery(
+      "DELETE FROM civicrm_file_analyzer_reference WHERE file_analyzer_id = %1",
+      [1 => [$fileAnalyzerId, 'Integer']]
+    );
+  }
+
+  /**
+   * Auto-delete abandoned files using database records
+   *
+   * @param string $cutoffDate Cutoff date
+   * @param bool $backup Whether to backup files
+   * @param string $directory_type Directory type
+   * @return int Number of files deleted
+   */
+  private static function autoDeleteAbandonedFilesDB($cutoffDate, $backup, $directory_type) {
+    // Get abandoned files older than cutoff date
+    $query = "
+      SELECT id, filename, file_path, file_size, file_extension
+      FROM civicrm_file_analyzer
+      WHERE directory_type = %1
+        AND is_abandoned = 1
+        AND is_active = 1
+        AND modified_date < %2
+    ";
+    $params = [
+      1 => [$directory_type, 'String'],
+      2 => [$cutoffDate, 'String'],
+    ];
+
+    $result = CRM_Core_DAO::executeQuery($query, $params);
+    $deletedCount = 0;
+
+    while ($result->fetch()) {
+      try {
+        $backupPath = NULL;
+
+        // Create backup if requested
+        if ($backup) {
+          $backupPath = self::backupFile($result->file_path, $directory_type);
+        }
+
+        // Delete physical file
+        if (file_exists($result->file_path) && unlink($result->file_path)) {
+          // Create deletion record
+          self::createDeletionRecord([
+            'file_analyzer_id' => $result->id,
+            'filename' => $result->filename,
+            'file_path' => $result->file_path,
+            'directory_type' => $directory_type,
+            'file_size' => $result->file_size,
+            'file_extension' => $result->file_extension,
+            'backup_path' => $backupPath,
+            'deletion_method' => 'auto',
+            'was_abandoned' => 1,
+          ]);
+
+          // Mark file as deleted in database
+          self::updateFileRecord($result->id, [
+            'is_active' => 0,
+            'scan_status' => self::SCAN_STATUS_DELETED,
+          ]);
+
+          $deletedCount++;
+        }
+      }
+      catch (Exception $e) {
+        CRM_Core_Error::debug_log_message(
+          "File Analyzer: Failed to delete file {$result->filename}: " . $e->getMessage()
+        );
+      }
+    }
+
+    return $deletedCount;
+  }
+
+  /**
+   * Get file record by path
+   *
+   * @param string $filePath File path
+   * @param string $directoryType Directory type
+   * @return array|null File record
+   */
+  private static function getFileRecordByPath($filePath, $directoryType) {
+    $query = "
+      SELECT *
+      FROM civicrm_file_analyzer
+      WHERE file_path = %1 AND directory_type = %2
+      LIMIT 1
+    ";
+    $params = [
+      1 => [$filePath, 'String'],
+      2 => [$directoryType, 'String'],
+    ];
+
+    $dao = CRM_Core_DAO::executeQuery($query, $params);
+    if ($dao->fetch()) {
+      return [
+        'id' => $dao->id,
+        'file_id' => $dao->file_id,
+        'filename' => $dao->filename,
+        'file_path' => $dao->file_path,
+        'is_abandoned' => $dao->is_abandoned,
+      ];
+    }
+
+    return NULL;
+  }
+
+  /**
+   * Create file record in database
+   *
+   * @param array $data File data
+   * @return int File analyzer ID
+   */
+  private static function createFileRecord($data) {
+    $fields = [];
+    $values = [];
     $params = [];
-    foreach ($batch as $index => $filename) {
-      $likeConditions[] = "intro_text LIKE %{$index} OR thankyou_text LIKE %{$index}";
-      $params[$index] = ['%' . $filename . '%', 'String'];
+    $index = 1;
+
+    foreach ($data as $key => $value) {
+      $fields[] = $key;
+      $values[] = "%{$index}";
+      $params[$index] = [$value, self::getFieldType($key)];
+      $index++;
     }
 
-    $whereClause = implode(' OR ', $likeConditions);
+    $sql = sprintf(
+      "INSERT INTO civicrm_file_analyzer (%s) VALUES (%s)",
+      implode(', ', $fields),
+      implode(', ', $values)
+    );
 
-    // Check contribution pages
-    $query = "SELECT intro_text, thankyou_text FROM civicrm_contribution_page WHERE {$whereClause}";
-
-    try {
-      $result = CRM_Core_DAO::executeQuery($query, $params);
-      while ($result->fetch()) {
-        // Check which files are referenced in the content
-        foreach ($batch as $filename) {
-          if (strpos($result->intro_text, $filename) !== false ||
-            strpos($result->thankyou_text, $filename) !== false) {
-            $filesInUse[$filename] = true;
-          }
-        }
-      }
-    } catch (Exception $e) {
-      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch contribute page check: " . $e->getMessage());
-    }
-
-    // Check message templates
-    $likeConditionsMsgTpl = [];
-    foreach ($batch as $index => $filename) {
-      $likeConditionsMsgTpl[] = "msg_html LIKE %{$index}";
-    }
-
-    $whereClauseMsgTpl = implode(' OR ', $likeConditionsMsgTpl);
-    $queryMsgTpl = "SELECT msg_html FROM civicrm_msg_template WHERE {$whereClauseMsgTpl}";
-
-    try {
-      $resultMsgTpl = CRM_Core_DAO::executeQuery($queryMsgTpl, $params);
-      while ($resultMsgTpl->fetch()) {
-        foreach ($batch as $filename) {
-          if (strpos($resultMsgTpl->msg_html, $filename) !== false) {
-            $filesInUse[$filename] = true;
-          }
-        }
-      }
-    } catch (Exception $e) {
-      CRM_Core_Error::debug_log_message("File Analyzer: Error in batch message template check: " . $e->getMessage());
-    }
-
-    return $filesInUse;
+    CRM_Core_DAO::executeQuery($sql, $params);
+    return CRM_Core_DAO::singleValueQuery("SELECT LAST_INSERT_ID()");
   }
 
   /**
-   * Legacy method kept for compatibility - now redirects to batch processing
+   * Update file record in database
    *
-   * @param string $filename Name of the file to check
-   * @param string $directory_type Type of directory being checked
-   * @return bool TRUE if file is referenced anywhere, FALSE if abandoned
+   * @param int $id File analyzer ID
+   * @param array $data Data to update
    */
-  public static function isFileInUse($filename, $directory_type = self::DIRECTORY_CUSTOM) {
-    // For single file checks, use batch method with single item
-    $result = self::batchCheckFilesInUse([$filename], $directory_type);
-    return isset($result[$filename]);
+  private static function updateFileRecord($id, $data) {
+    $sets = [];
+    $params = [1 => [$id, 'Integer']];
+    $index = 2;
+
+    foreach ($data as $key => $value) {
+      $sets[] = "{$key} = %{$index}";
+      $params[$index] = [$value, self::getFieldType($key)];
+      $index++;
+    }
+
+    $sql = sprintf(
+      "UPDATE civicrm_file_analyzer SET %s WHERE id = %%1",
+      implode(', ', $sets)
+    );
+
+    CRM_Core_DAO::executeQuery($sql, $params);
   }
 
   /**
-   * Get the appropriate directory path based on directory type
+   * Create scan record
    *
-   * @param string $directory_type Type of directory (custom|contribute)
-   * @return string Full path to the directory
+   * @param string $directoryType Directory type
+   * @return int Scan ID
+   */
+  private static function createScanRecord($directoryType) {
+    $sql = "
+      INSERT INTO civicrm_file_analyzer_scan
+      (directory_type, scan_date, scan_status)
+      VALUES (%1, %2, %3)
+    ";
+    $params = [
+      1 => [$directoryType, 'String'],
+      2 => [date('Y-m-d H:i:s'), 'String'],
+      3 => ['running', 'String'],
+    ];
+
+    CRM_Core_DAO::executeQuery($sql, $params);
+    return CRM_Core_DAO::singleValueQuery("SELECT LAST_INSERT_ID()");
+  }
+
+  /**
+   * Update scan record
+   *
+   * @param int $scanId Scan ID
+   * @param array $data Data to update
+   */
+  private static function updateScanRecord($scanId, $data) {
+    $sets = [];
+    $params = [1 => [$scanId, 'Integer']];
+    $index = 2;
+
+    foreach ($data as $key => $value) {
+      $sets[] = "{$key} = %{$index}";
+      $params[$index] = [$value, self::getFieldType($key)];
+      $index++;
+    }
+
+    $sql = sprintf(
+      "UPDATE civicrm_file_analyzer_scan SET %s WHERE id = %%1",
+      implode(', ', $sets)
+    );
+
+    CRM_Core_DAO::executeQuery($sql, $params);
+  }
+
+  /**
+   * Create deletion record for audit trail
+   *
+   * @param array $data Deletion data
+   * @return int Deletion record ID
+   */
+  private static function createDeletionRecord($data) {
+    // Get current user contact ID
+    $session = CRM_Core_Session::singleton();
+    $contactId = $session->get('userID');
+
+    $defaults = [
+      'deleted_by' => $contactId,
+      'deleted_date' => date('Y-m-d H:i:s'),
+      'deletion_method' => 'manual',
+      'was_abandoned' => 0,
+    ];
+
+    $data = array_merge($defaults, $data);
+
+    $fields = [];
+    $values = [];
+    $params = [];
+    $index = 1;
+
+    foreach ($data as $key => $value) {
+      $fields[] = $key;
+      $values[] = "%{$index}";
+      $params[$index] = [$value, self::getFieldType($key)];
+      $index++;
+    }
+
+    $sql = sprintf(
+      "INSERT INTO civicrm_file_analyzer_deleted (%s) VALUES (%s)",
+      implode(', ', $fields),
+      implode(', ', $values)
+    );
+
+    CRM_Core_DAO::executeQuery($sql, $params);
+    return CRM_Core_DAO::singleValueQuery("SELECT LAST_INSERT_ID()");
+  }
+
+  /**
+   * Mark files that no longer exist on filesystem as inactive
+   *
+   * @param string $directoryType Directory type
+   * @param string $scanPath Scan path
+   */
+  private static function markMissingFilesInactive($directoryType, $scanPath) {
+    // Get all active files for this directory
+    $query = "
+      SELECT id, file_path
+      FROM civicrm_file_analyzer
+      WHERE directory_type = %1
+        AND is_active = 1
+        AND last_scanned_date < %2
+    ";
+    $params = [
+      1 => [$directoryType, 'String'],
+      2 => [date('Y-m-d H:i:s', strtotime('-1 hour')), 'String'],
+    ];
+
+    $result = CRM_Core_DAO::executeQuery($query, $params);
+    $missingIds = [];
+
+    while ($result->fetch()) {
+      if (!file_exists($result->file_path)) {
+        $missingIds[] = $result->id;
+      }
+    }
+
+    // Mark missing files as inactive
+    if (!empty($missingIds)) {
+      $idList = implode(',', $missingIds);
+      CRM_Core_DAO::executeQuery(
+        "UPDATE civicrm_file_analyzer 
+         SET is_active = 0, scan_status = %1 
+         WHERE id IN ({$idList})",
+        [1 => [self::SCAN_STATUS_ERROR, 'String']]
+      );
+    }
+  }
+
+  /**
+   * Get field type for SQL parameters
+   *
+   * @param string $fieldName Field name
+   * @return string Field type
+   */
+  private static function getFieldType($fieldName) {
+    $integerFields = [
+      'id', 'file_id', 'file_size', 'is_abandoned', 'is_active',
+      'file_analyzer_id', 'entity_id', 'deleted_by', 'was_abandoned',
+      'total_files_scanned', 'active_files', 'abandoned_files',
+      'total_size', 'abandoned_size', 'scan_duration'
+    ];
+
+    if (in_array($fieldName, $integerFields)) {
+      return 'Integer';
+    }
+
+    return 'String';
+  }
+
+  /**
+   * Get latest scan results from database
+   *
+   * @param string $directoryType Optional directory type filter
+   * @return array Scan results
+   */
+  public static function getLatestScanResults($directoryType = NULL) {
+    $whereClause = $directoryType ? "WHERE directory_type = %1" : "";
+    $params = $directoryType ? [1 => [$directoryType, 'String']] : [];
+
+    $query = "
+      SELECT *
+      FROM civicrm_file_analyzer_scan
+      {$whereClause}
+      ORDER BY scan_date DESC
+      LIMIT 1
+    ";
+
+    $dao = CRM_Core_DAO::executeQuery($query, $params);
+    if ($dao->fetch()) {
+      return [
+        'scan_date' => $dao->scan_date,
+        'directory_type' => $dao->directory_type,
+        'directoryStats' => [
+          'totalFiles' => $dao->total_files_scanned,
+          'totalSize' => $dao->total_size,
+          'abandonedSize' => $dao->abandoned_size,
+          'abandonedFiles' => $dao->abandoned_files,
+        ],
+        'active_files' => $dao->active_files,
+        'abandoned_files' => $dao->abandoned_files,
+        'fileAnalysis' => json_decode($dao->statistics, TRUE),
+      ];
+    }
+
+    return [];
+  }
+
+  /**
+   * Get abandoned files from database
+   *
+   * @param string $directoryType Directory type
+   * @return array Abandoned files list
+   */
+  public static function getAbandonedFilesFromDB($directoryType = self::DIRECTORY_CUSTOM) {
+    $query = "
+      SELECT 
+        id,
+        filename as filenameOnly,
+        file_path as path,
+        file_size as size,
+        file_extension as extension,
+        modified_date as modified,
+        directory_type,
+        0 as in_use
+      FROM civicrm_file_analyzer
+      WHERE directory_type = %1
+        AND is_abandoned = 1
+        AND is_active = 1
+      ORDER BY file_size DESC
+    ";
+    $params = [1 => [$directoryType, 'String']];
+
+    $result = CRM_Core_DAO::executeQuery($query, $params);
+    $files = [];
+
+    while ($result->fetch()) {
+      $files[] = [
+        'id' => $result->id,
+        'filename' => $result->filenameOnly,
+        'filenameOnly' => $result->filenameOnly,
+        'path' => $result->path,
+        'size' => $result->size,
+        'extension' => $result->extension,
+        'modified' => $result->modified,
+        'directory_type' => $result->directory_type,
+        'in_use' => FALSE,
+      ];
+    }
+
+    return $files;
+  }
+
+  /**
+   * Get file statistics from database
+   *
+   * @param string $directoryType Optional directory type
+   * @return array Statistics
+   */
+  public static function getFileStatistics($directoryType = NULL) {
+    $whereClause = $directoryType ? "WHERE directory_type = %1" : "";
+    $params = $directoryType ? [1 => [$directoryType, 'String']] : [];
+
+    $query = "
+      SELECT 
+        COUNT(*) as total_files,
+        SUM(file_size) as total_size,
+        SUM(CASE WHEN is_abandoned = 1 THEN 1 ELSE 0 END) as abandoned_count,
+        SUM(CASE WHEN is_abandoned = 1 THEN file_size ELSE 0 END) as abandoned_size,
+        SUM(CASE WHEN is_abandoned = 0 THEN 1 ELSE 0 END) as active_count
+      FROM civicrm_file_analyzer
+      {$whereClause}
+        AND is_active = 1
+    ";
+
+    $dao = CRM_Core_DAO::executeQuery($query, $params);
+    $dao->fetch();
+
+    return [
+      'total_files' => $dao->total_files,
+      'total_size' => $dao->total_size,
+      'abandoned_count' => $dao->abandoned_count,
+      'abandoned_size' => $dao->abandoned_size,
+      'active_count' => $dao->active_count,
+    ];
+  }
+
+  /**
+   * Get file with references by ID
+   *
+   * @param int $fileId File analyzer ID
+   * @return array File data with references
+   */
+  public static function getFileWithReferences($fileId) {
+    // Get file record
+    $fileQuery = "
+      SELECT *
+      FROM civicrm_file_analyzer
+      WHERE id = %1
+    ";
+    $fileParams = [1 => [$fileId, 'Integer']];
+    $fileDao = CRM_Core_DAO::executeQuery($fileQuery, $fileParams);
+
+    if (!$fileDao->fetch()) {
+      return NULL;
+    }
+
+    $fileData = [
+      'id' => $fileDao->id,
+      'file_id' => $fileDao->file_id,
+      'filename' => $fileDao->filename,
+      'file_path' => $fileDao->file_path,
+      'directory_type' => $fileDao->directory_type,
+      'file_size' => $fileDao->file_size,
+      'file_extension' => $fileDao->file_extension,
+      'mime_type' => $fileDao->mime_type,
+      'is_abandoned' => $fileDao->is_abandoned,
+      'is_active' => $fileDao->is_active,
+      'created_date' => $fileDao->created_date,
+      'modified_date' => $fileDao->modified_date,
+      'last_scanned_date' => $fileDao->last_scanned_date,
+      'references' => [],
+    ];
+
+    // Get references
+    $refQuery = "
+      SELECT *
+      FROM civicrm_file_analyzer_reference
+      WHERE file_analyzer_id = %1
+        AND is_active = 1
+    ";
+    $refParams = [1 => [$fileId, 'Integer']];
+    $refDao = CRM_Core_DAO::executeQuery($refQuery, $refParams);
+
+    while ($refDao->fetch()) {
+      $fileData['references'][] = [
+        'id' => $refDao->id,
+        'reference_type' => $refDao->reference_type,
+        'entity_table' => $refDao->entity_table,
+        'entity_id' => $refDao->entity_id,
+        'field_name' => $refDao->field_name,
+        'details' => json_decode($refDao->reference_details, TRUE),
+        'created_date' => $refDao->created_date,
+        'last_verified_date' => $refDao->last_verified_date,
+      ];
+    }
+
+    return $fileData;
+  }
+
+  /**
+   * Delete file by ID
+   *
+   * @param int $fileId File analyzer ID
+   * @param bool $backup Whether to backup
+   * @param string $reason Deletion reason
+   * @return bool Success
+   */
+  public static function deleteFileById($fileId, $backup = TRUE, $reason = NULL) {
+    $fileData = self::getFileWithReferences($fileId);
+
+    if (!$fileData) {
+      throw new Exception("File not found with ID: {$fileId}");
+    }
+
+    if (!$fileData['is_abandoned']) {
+      throw new Exception("Cannot delete file that is still in use");
+    }
+
+    $backupPath = NULL;
+    if ($backup) {
+      $backupPath = self::backupFile($fileData['file_path'], $fileData['directory_type']);
+    }
+
+    // Delete physical file
+    if (file_exists($fileData['file_path'])) {
+      if (!unlink($fileData['file_path'])) {
+        throw new Exception("Failed to delete physical file");
+      }
+    }
+
+    // Create deletion record
+    self::createDeletionRecord([
+      'file_analyzer_id' => $fileId,
+      'filename' => $fileData['filename'],
+      'file_path' => $fileData['file_path'],
+      'directory_type' => $fileData['directory_type'],
+      'file_size' => $fileData['file_size'],
+      'file_extension' => $fileData['file_extension'],
+      'backup_path' => $backupPath,
+      'deletion_method' => 'manual',
+      'was_abandoned' => 1,
+      'deletion_reason' => $reason,
+    ]);
+
+    // Mark as deleted
+    self::updateFileRecord($fileId, [
+      'is_active' => 0,
+      'scan_status' => self::SCAN_STATUS_DELETED,
+    ]);
+
+    return TRUE;
+  }
+
+  /**
+   * Get deletion history
+   *
+   * @param array $filters Optional filters
+   * @param int $limit Limit results
+   * @return array Deletion records
+   */
+  public static function getDeletionHistory($filters = [], $limit = 100) {
+    $whereClauses = [];
+    $params = [];
+    $index = 1;
+
+    if (!empty($filters['directory_type'])) {
+      $whereClauses[] = "directory_type = %{$index}";
+      $params[$index] = [$filters['directory_type'], 'String'];
+      $index++;
+    }
+
+    if (!empty($filters['deleted_by'])) {
+      $whereClauses[] = "deleted_by = %{$index}";
+      $params[$index] = [$filters['deleted_by'], 'Integer'];
+      $index++;
+    }
+
+    if (!empty($filters['date_from'])) {
+      $whereClauses[] = "deleted_date >= %{$index}";
+      $params[$index] = [$filters['date_from'], 'String'];
+      $index++;
+    }
+
+    if (!empty($filters['date_to'])) {
+      $whereClauses[] = "deleted_date <= %{$index}";
+      $params[$index] = [$filters['date_to'], 'String'];
+      $index++;
+    }
+
+    $whereClause = !empty($whereClauses) ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
+
+    $query = "
+      SELECT 
+        d.*,
+        c.display_name as deleted_by_name
+      FROM civicrm_file_analyzer_deleted d
+      LEFT JOIN civicrm_contact c ON d.deleted_by = c.id
+      {$whereClause}
+      ORDER BY deleted_date DESC
+      LIMIT {$limit}
+    ";
+
+    $result = CRM_Core_DAO::executeQuery($query, $params);
+    $records = [];
+
+    while ($result->fetch()) {
+      $records[] = [
+        'id' => $result->id,
+        'filename' => $result->filename,
+        'file_path' => $result->file_path,
+        'directory_type' => $result->directory_type,
+        'file_size' => $result->file_size,
+        'file_extension' => $result->file_extension,
+        'backup_path' => $result->backup_path,
+        'deleted_by' => $result->deleted_by,
+        'deleted_by_name' => $result->deleted_by_name,
+        'deleted_date' => $result->deleted_date,
+        'deletion_method' => $result->deletion_method,
+        'was_abandoned' => $result->was_abandoned,
+        'deletion_reason' => $result->deletion_reason,
+      ];
+    }
+
+    return $records;
+  }
+
+  // ========== Helper Methods (reused from original) ==========
+
+  /**
+   * Get directory path based on type
    */
   private static function getDirectoryPath($directory_type) {
     $config = CRM_Core_Config::singleton();
@@ -464,7 +1124,6 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         return $config->customFileUploadDir;
 
       case self::DIRECTORY_CONTRIBUTE:
-        // Construct path to contribute images directory
         $baseDir = dirname($config->customFileUploadDir);
         return $baseDir . '/persist/contribute/images';
 
@@ -474,179 +1133,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   }
 
   /**
-   * Check if a file is referenced in CiviCRM database tables
-   *
-   * Performs comprehensive database queries across multiple CiviCRM tables
-   * to determine if a file is still being used by the system. This prevents
-   * deletion of files that are still needed.
-   *
-   * For contribute images, this checks the civicrm_contribution_page table
-   * for references in header_text and footer_text fields.
-   *
-   * Tables checked:
-   * - civicrm_file: Main file registry
-   * - civicrm_entity_file: File-entity relationship mappings
-   * - civicrm_contribution_page: Contribute page header/footer content
-   * - Custom field tables: Dynamic tables storing file references
-   *
-   * @param string $filename Name of the file to check (basename only)
-   * @param string $directory_type Type of directory being checked
-   * @return bool TRUE if file is referenced anywhere, FALSE if abandoned
-   */
-  public static function isFileInUseOld($filename, $directory_type = self::DIRECTORY_CUSTOM) {
-    // Check main civicrm_file table for direct file references
-    if ($directory_type == self::DIRECTORY_CUSTOM) {
-      $query = "
-      SELECT COUNT(*) as count
-      FROM civicrm_file
-      WHERE uri = %1 OR uri LIKE %2
-    ";
-      $params = [
-        1 => [$filename, 'String'],           // Exact filename match
-        2 => ['%' . $filename, 'String'],     // Filename anywhere in path
-      ];
-
-      $result = CRM_Core_DAO::executeQuery($query, $params);
-      $result->fetch();
-
-      // If found in main file table, definitely in use
-      if ($result->count > 0) {
-        return TRUE;
-      }
-    }
-    else {
-      if ($directory_type === self::DIRECTORY_CONTRIBUTE) {
-        // For contribute images, check contribution page content
-        $contributeQuery = "
-        SELECT COUNT(*) as count
-        FROM civicrm_contribution_page
-        WHERE intro_text LIKE %1 OR thankyou_text LIKE %1
-      ";
-        $contributeParams = [
-          1 => ['%' . $filename . '%', 'String'],
-        ];
-
-        $contributeResult = CRM_Core_DAO::executeQuery($contributeQuery, $contributeParams);
-        $contributeResult->fetch();
-
-        if ($contributeResult->count > 0) {
-          return TRUE;
-        }
-
-        $contributeQueryMsgTpl = "
-        SELECT COUNT(*) as count
-        FROM civicrm_msg_template
-        WHERE msg_html LIKE %1
-      ";
-        $contributeParams = [
-          1 => ['%' . $filename . '%', 'String'],
-        ];
-
-        $contributeResultMsgTpl = CRM_Core_DAO::executeQuery($contributeQueryMsgTpl, $contributeParams);
-        $contributeResultMsgTpl->fetch();
-
-        if ($contributeResultMsgTpl->count > 0) {
-          return TRUE;
-        }
-      }
-    }
-    return FALSE;
-  }
-
-  /**
-   * Execute automatic deletion of abandoned files based on age criteria
-   *
-   * Processes a pre-filtered list of abandoned files and deletes those
-   * that exceed the configured retention period. Includes optional backup
-   * functionality for safety.
-   *
-   * @param string $cutoffDate Date threshold in 'Y-m-d H:i:s' format
-   * @param bool $backup Whether to create backup copies before deletion
-   * @param array $abandonedFiles Pre-filtered list of abandoned files from scan
-   * @param string $directory_type Type of directory being processed
-   * @return int Number of files successfully deleted
-   */
-  private static function autoDeleteAbandonedFiles($cutoffDate, $backup = TRUE, $abandonedFiles = [], $directory_type = self::DIRECTORY_CUSTOM) {
-    $deletedCount = 0;
-
-    // Process each abandoned file for potential deletion
-    foreach ($abandonedFiles as $fileInfo) {
-      // Only delete files older than the configured cutoff date
-      if ($fileInfo['modified'] < $cutoffDate) {
-        $filePath = $fileInfo['path'];
-
-        // Create safety backup if requested (recommended for production)
-        if ($backup) {
-          self::backupFile($filePath, $directory_type);
-        }
-
-        // Attempt file deletion and track success
-        if (unlink($filePath)) {
-          $deletedCount++;
-        }
-      }
-    }
-
-    return $deletedCount;
-  }
-
-  /**
-   * Create timestamped backup copy of file before deletion
-   *
-   * Implements a safety mechanism by creating backup copies of files
-   * before deletion. Backups are organized in a dedicated directory
-   * structure with timestamps to prevent conflicts.
-   *
-   * @param string $filePath Full filesystem path to the file being backed up
-   * @param string $directory_type Type of directory the file belongs to
-   */
-  private static function backupFile($filePath, $directory_type = self::DIRECTORY_CUSTOM) {
-    // Define backup directory within the CiviCRM custom upload area
-    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
-
-    // Ensure backup directory exists
-    if (!is_dir($backupDir)) {
-      mkdir($backupDir, 0775, TRUE);
-    }
-
-    // Create directory-specific backup folder
-    $typeBackupDir = $backupDir . '/deleted_files_' . $directory_type;
-    if (!is_dir($typeBackupDir)) {
-      mkdir($typeBackupDir, 0775, TRUE);
-    }
-
-    // Create timestamped filename to prevent backup conflicts
-    $backupPath = $typeBackupDir . '/' . date('Y-m-d_H-i-s_') . basename($filePath);
-
-    // Create the backup copy
-    copy($filePath, $backupPath);
-  }
-
-  /**
-   * Retrieve extension configuration settings from CiviCRM
-   *
-   * Loads all configurable parameters for the File Analyzer extension
-   * from CiviCRM's settings system, providing defaults for missing values.
-   *
-   * @return array Configuration settings with defaults applied
-   */
-  private static function getSettings() {
-    return [
-      'auto_delete' => Civi::settings()->get('fileanalyzer_auto_delete') ?: FALSE,
-      'auto_delete_days' => Civi::settings()->get('fileanalyzer_auto_delete_days') ?: 30,
-      'backup_before_delete' => Civi::settings()->get('fileanalyzer_backup_before_delete') ?: TRUE,
-      'excluded_extensions' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_extensions') ?: '')),
-    ];
-  }
-
-  /**
-   * Recursively scan directory tree for all files
-   *
-   * Performs comprehensive directory traversal while filtering out
-   * system directories and handling errors gracefully.
-   *
-   * @param string $dir Root directory path to scan
-   * @return array List of relative file paths found in directory tree
+   * Scan directory recursively
    */
   private static function scanDirectoryRecursive($dir) {
     $files = [];
@@ -655,6 +1142,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     if (!is_dir($dir)) {
       return $files;
     }
+
     $dir = rtrim($dir, '/');
 
     try {
@@ -693,39 +1181,61 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   }
 
   /**
-   * Create required directory structure for File Analyzer extension
-   *
-   * Sets up the complete directory hierarchy needed for extension operation,
-   * including backup storage, reports, and security measures.
-   *
-   * @return bool TRUE on success, FALSE if directory creation fails
+   * Get MIME type
    */
-  private static function createDirectories() {
-    // Define main backup directory path
+  private static function getMimeType($filePath) {
+    if (function_exists('finfo_file')) {
+      $finfo = finfo_open(FILEINFO_MIME_TYPE);
+      $mimeType = finfo_file($finfo, $filePath);
+      finfo_close($finfo);
+      if ($mimeType) {
+        return $mimeType;
+      }
+    }
+
+    if (function_exists('mime_content_type')) {
+      $mimeType = mime_content_type($filePath);
+      if ($mimeType) {
+        return $mimeType;
+      }
+    }
+
+    return 'application/octet-stream';
+  }
+
+  /**
+   * Backup file before deletion
+   */
+  private static function backupFile($filePath, $directory_type) {
     $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
 
     // Create main backup directory with appropriate permissions
     if (!is_dir($backupDir)) {
-      if (!mkdir($backupDir, 0775, TRUE)) {
-        CRM_Core_Error::debug_log_message('FileAnalyzer: Failed to create backup directory');
-        return FALSE;
-      }
-    }
-    // Owner, group read/write/execute, and others read/execute
-    $permissions = 0775;
-    if (chmod($backupDir, $permissions)) {
-      CRM_Core_Error::debug_log_message('FileAnalyzer: file_analyzer_backups folder permissions set to ' . decoct($permissions));
-    } else {
-      CRM_Core_Error::debug_log_message('FileAnalyzer: Failed to change folder permissions');
+      mkdir($backupDir, 0775, TRUE);
     }
 
-    // Create organized subdirectory structure
-    $subdirs = [
-      'deleted_files_custom',      // Stores backup copies of deleted custom files
-      'deleted_files_contribute',  // Stores backup copies of deleted contribute files
-      'reports'                    // Stores generated reports and analysis data
-    ];
+    $typeBackupDir = $backupDir . '/deleted_files_' . $directory_type;
+    if (!is_dir($typeBackupDir)) {
+      mkdir($typeBackupDir, 0775, TRUE);
+    }
 
+    $backupPath = $typeBackupDir . '/' . date('Y-m-d_H-i-s_') . basename($filePath);
+    copy($filePath, $backupPath);
+
+    return $backupPath;
+  }
+
+  /**
+   * Create required directories
+   */
+  private static function createDirectories() {
+    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
+
+    if (!is_dir($backupDir)) {
+      mkdir($backupDir, 0775, TRUE);
+    }
+
+    $subdirs = ['deleted_files_custom', 'deleted_files_contribute', 'reports'];
     foreach ($subdirs as $subdir) {
       $path = $backupDir . '/' . $subdir;
       if (!is_dir($path)) {
@@ -744,39 +1254,14 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   }
 
   /**
-   * Retrieve the most recent scan results from persistent storage
-   *
-   * @param string $directory_type Optional directory type filter
-   * @return array|null Decoded scan results array, or null if no results exist
+   * Get extension settings
    */
-  public static function getLatestScanResults($directory_type = null) {
-    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
-    $latestScanPath = $backupDir . '/latest_scan_results_' . $directory_type . '.json';
-
-    if (file_exists($latestScanPath)) {
-      $content = file_get_contents($latestScanPath);
-      $results = json_decode($content, TRUE);
-      return $results;
-    }
-
-    return [];
-  }
-
-  /**
-   * Retrieve abandoned files list from persistent storage
-   *
-   * @param string $directory_type Directory type (custom|contribute)
-   * @return array List of abandoned file information arrays
-   */
-  public static function getAbandonedFilesFromJson($directory_type = self::DIRECTORY_CUSTOM) {
-    $backupDir = CRM_Core_Config::singleton()->uploadDir . 'file_analyzer_backups';
-    $abandonedPath = $backupDir . '/abandoned_files_' . $directory_type . '.json';
-
-    if (file_exists($abandonedPath)) {
-      $content = file_get_contents($abandonedPath);
-      return json_decode($content, TRUE);
-    }
-
-    return [];
+  private static function getSettings() {
+    return [
+      'auto_delete' => Civi::settings()->get('fileanalyzer_auto_delete') ?: FALSE,
+      'auto_delete_days' => Civi::settings()->get('fileanalyzer_auto_delete_days') ?: 30,
+      'backup_before_delete' => Civi::settings()->get('fileanalyzer_backup_before_delete') ?: TRUE,
+      'excluded_extensions' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_extensions') ?: '')),
+    ];
   }
 }

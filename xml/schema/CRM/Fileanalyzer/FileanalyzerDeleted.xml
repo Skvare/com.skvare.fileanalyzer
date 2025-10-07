@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+
+<table>
+  <base>CRM/Fileanalyzer</base>
+  <class>FileanalyzerDeleted</class>
+  <name>civicrm_file_analyzer_deleted</name>
+  <comment>Audit trail of deleted files for compliance and recovery</comment>
+  <log>true</log>
+
+  <field>
+    <name>id</name>
+    <type>int unsigned</type>
+    <required>true</required>
+    <comment>Unique FileanalyzerDeleted ID</comment>
+    <html>
+      <type>Number</type>
+    </html>
+  </field>
+  <primaryKey>
+    <name>id</name>
+    <autoincrement>true</autoincrement>
+  </primaryKey>
+
+  <field>
+    <name>file_analyzer_id</name>
+    <type>int unsigned</type>
+    <comment>Original file analyzer record ID</comment>
+    <html>
+      <type>EntityRef</type>
+      <label>File Analyzer</label>
+    </html>
+  </field>
+  <foreignKey>
+    <name>file_analyzer_id</name>
+    <table>civicrm_file_analyzer</table>
+    <key>id</key>
+    <onDelete>SET NULL</onDelete>
+  </foreignKey>
+
+  <field>
+    <name>filename</name>
+    <type>varchar</type>
+    <length>255</length>
+    <required>true</required>
+    <comment>Name of deleted file</comment>
+    <html>
+      <type>Text</type>
+      <label>Filename</label>
+    </html>
+  </field>
+
+  <field>
+    <name>file_path</name>
+    <type>varchar</type>
+    <length>500</length>
+    <required>true</required>
+    <comment>Original file path</comment>
+    <html>
+      <type>Text</type>
+      <label>File Path</label>
+    </html>
+  </field>
+
+  <field>
+    <name>directory_type</name>
+    <type>varchar</type>
+    <length>20</length>
+    <required>true</required>
+    <comment>Directory type</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_FileAnalyzerDeleted::getDirectoryTypes</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Directory Type</label>
+    </html>
+  </field>
+
+  <field>
+    <name>file_size</name>
+    <type>bigint unsigned</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>File size in bytes</comment>
+    <html>
+      <type>Number</type>
+      <label>File Size</label>
+    </html>
+  </field>
+
+  <field>
+    <name>file_extension</name>
+    <type>varchar</type>
+    <length>10</length>
+    <comment>File extension</comment>
+    <html>
+      <type>Text</type>
+      <label>File Extension</label>
+    </html>
+  </field>
+
+  <field>
+    <name>backup_path</name>
+    <type>varchar</type>
+    <length>500</length>
+    <comment>Path to backup copy if exists</comment>
+    <html>
+      <type>Text</type>
+      <label>Backup Path</label>
+    </html>
+  </field>
+
+  <field>
+    <name>deleted_by</name>
+    <type>int unsigned</type>
+    <comment>Contact ID who deleted the file</comment>
+    <html>
+      <type>EntityRef</type>
+      <label>Deleted By</label>
+    </html>
+  </field>
+  <foreignKey>
+    <name>deleted_by</name>
+    <table>civicrm_contact</table>
+    <key>id</key>
+    <onDelete>SET NULL</onDelete>
+  </foreignKey>
+
+  <field>
+    <name>deleted_date</name>
+    <type>datetime</type>
+    <required>true</required>
+    <comment>When file was deleted</comment>
+    <html>
+      <type>Select Date</type>
+      <label>Deleted Date</label>
+    </html>
+  </field>
+
+  <field>
+    <name>deletion_method</name>
+    <type>varchar</type>
+    <length>50</length>
+    <comment>Method: manual, auto, bulk</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_FileAnalyzerDeleted::getDeletionMethods</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Deletion Method</label>
+    </html>
+  </field>
+
+  <field>
+    <name>was_abandoned</name>
+    <type>boolean</type>
+    <default>0</default>
+    <required>true</required>
+    <comment>Whether file was abandoned at deletion</comment>
+    <html>
+      <type>CheckBox</type>
+      <label>Was Abandoned</label>
+    </html>
+  </field>
+
+  <field>
+    <name>deletion_reason</name>
+    <type>text</type>
+    <comment>Reason or notes for deletion</comment>
+    <html>
+      <type>TextArea</type>
+      <label>Deletion Reason</label>
+    </html>
+  </field>
+
+  <index>
+    <name>index_directory_type</name>
+    <fieldName>directory_type</fieldName>
+  </index>
+
+  <index>
+    <name>index_deleted_date</name>
+    <fieldName>deleted_date</fieldName>
+  </index>
+
+  <index>
+    <name>index_deleted_by</name>
+    <fieldName>deleted_by</fieldName>
+  </index>
+
+</table>

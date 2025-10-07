@@ -2,19 +2,19 @@
 use CRM_Fileanalyzer_ExtensionUtil as E;
 
 /**
- * Fileanalyzer.create API specification (optional).
+ * FileanalyzerDeleted.create API specification (optional).
  * This is used for documentation and validation.
  *
  * @param array $spec description of fields supported by this API call
  *
  * @see https://docs.civicrm.org/dev/en/latest/framework/api-architecture/
  */
-function _civicrm_api3_fileanalyzer_create_spec(&$spec) {
+function _civicrm_api3_fileanalyzer_deleted_create_spec(&$spec) {
   // $spec['some_parameter']['api.required'] = 1;
 }
 
 /**
- * Fileanalyzer.create API.
+ * FileanalyzerDeleted.create API.
  *
  * @param array $params
  *
@@ -23,12 +23,12 @@ function _civicrm_api3_fileanalyzer_create_spec(&$spec) {
  *
  * @throws API_Exception
  */
-function civicrm_api3_fileanalyzer_create($params) {
-  return _civicrm_api3_basic_create(_civicrm_api3_get_BAO(__FUNCTION__), $params, 'Fileanalyzer');
+function civicrm_api3_fileanalyzer_deleted_create($params) {
+  return _civicrm_api3_basic_create(_civicrm_api3_get_BAO(__FUNCTION__), $params, 'FileanalyzerDeleted');
 }
 
 /**
- * Fileanalyzer.delete API.
+ * FileanalyzerDeleted.delete API.
  *
  * @param array $params
  *
@@ -37,12 +37,12 @@ function civicrm_api3_fileanalyzer_create($params) {
  *
  * @throws API_Exception
  */
-function civicrm_api3_fileanalyzer_delete($params) {
+function civicrm_api3_fileanalyzer_deleted_delete($params) {
   return _civicrm_api3_basic_delete(_civicrm_api3_get_BAO(__FUNCTION__), $params);
 }
 
 /**
- * Fileanalyzer.get API.
+ * FileanalyzerDeleted.get API.
  *
  * @param array $params
  *
@@ -51,6 +51,6 @@ function civicrm_api3_fileanalyzer_delete($params) {
  *
  * @throws API_Exception
  */
-function civicrm_api3_fileanalyzer_get($params) {
-  return _civicrm_api3_basic_get(_civicrm_api3_get_BAO(__FUNCTION__), $params, TRUE, 'Fileanalyzer');
+function civicrm_api3_fileanalyzer_deleted_get($params) {
+  return _civicrm_api3_basic_get(_civicrm_api3_get_BAO(__FUNCTION__), $params, TRUE, 'FileanalyzerDeleted');
 }
