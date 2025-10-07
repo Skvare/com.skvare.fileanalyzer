@@ -62,7 +62,7 @@ CREATE TABLE `civicrm_file_analyzer` (
   INDEX `index_scan_status`(scan_status),
   INDEX `index_modified_date`(modified_date),
   CONSTRAINT FK_civicrm_file_analyzer_file_id FOREIGN KEY (`file_id`) REFERENCES `civicrm_file`(`id`) ON DELETE SET NULL,
-  CONSTRAINT FK_civicrm_file_analyzer_contact_id FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE CASCADE)
+  CONSTRAINT FK_civicrm_file_analyzer_contact_id FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL)
 ENGINE=InnoDB;
 
 -- /*******************************************************

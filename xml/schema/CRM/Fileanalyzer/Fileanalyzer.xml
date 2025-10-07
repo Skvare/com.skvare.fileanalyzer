@@ -187,7 +187,7 @@
     <comment>Flag indicating if file is belong contact image</comment>
     <html>
       <type>CheckBox</type>
-      <label>Is Active</label>
+      <label>Is Contact File</label>
     </html>
   </field>
 
@@ -200,7 +200,7 @@
     <name>contact_id</name>
     <table>civicrm_contact</table>
     <key>id</key>
-    <onDelete>CASCADE</onDelete>
+    <onDelete>SET NULL</onDelete>
   </foreignKey>
 
   <index>

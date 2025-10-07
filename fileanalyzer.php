@@ -9,8 +9,15 @@ use CRM_Fileanalyzer_ExtensionUtil as E;
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_config/
  */
-function fileanalyzer_civicrm_config(&$config): void {
+function fileanalyzer_civicrm_config(&$config) {
   _fileanalyzer_civix_civicrm_config($config);
+  // Register modifier
+  static $registered = false;
+  if (!$registered) {
+    $smarty = CRM_Core_Smarty::singleton();
+    $smarty->registerPlugin("modifier", "filesize", "smarty_modifier_filesize");
+    $registered = true;
+  }
 }
 
 /**
@@ -18,7 +25,7 @@ function fileanalyzer_civicrm_config(&$config): void {
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_install
  */
-function fileanalyzer_civicrm_install(): void {
+function fileanalyzer_civicrm_install() {
   _fileanalyzer_civix_civicrm_install();
 }
 
@@ -27,7 +34,7 @@ function fileanalyzer_civicrm_install(): void {
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_enable
  */
-function fileanalyzer_civicrm_enable(): void {
+function fileanalyzer_civicrm_enable() {
   _fileanalyzer_civix_civicrm_enable();
 }
 
@@ -76,4 +83,15 @@ function fileanalyzer_civicrm_navigationMenu(&$menu) {
   ]);
 
   _fileanalyzer_civix_navigationMenu($menu);
+}
+
+
+function smarty_modifier_filesize($bytes) {
+  $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  $i = 0;
+  while ($bytes >= 1024 && $i < count($units) - 1) {
+    $bytes /= 1024;
+    $i++;
+  }
+  return round($bytes, 2) . ' ' . $units[$i];
 }
