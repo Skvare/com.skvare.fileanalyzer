@@ -49,8 +49,7 @@ class Delete extends \Civi\Api4\Generic\DAODeleteAction {
     }
     // Check if file exists and delete it
     if (file_exists($filePath) && is_file($filePath)) {
-      \CRM_Core_Error::debug_log_message('A Deleting file: ' . $filePath);
-      // @unlink($filePath);
+      @unlink($filePath);
 
       // Optionally log the deletion
       \Civi::log()->info('Deleted file: ' . $filePath);

@@ -182,8 +182,7 @@
   <field>
     <name>is_contact_file</name>
     <type>boolean</type>
-    <default>1</default>
-    <required>true</required>
+    <default>0</default>
     <comment>Flag indicating if file is belong contact image</comment>
     <html>
       <type>CheckBox</type>

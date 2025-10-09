@@ -52,7 +52,7 @@ CREATE TABLE `civicrm_file_analyzer` (
   `modified_date` datetime COMMENT 'File last modification date',
   `last_scanned_date` datetime COMMENT 'Last time this file was scanned',
   `scan_status` varchar(20) DEFAULT "pending" COMMENT 'Status: pending, scanned, deleted, error',
-  `is_contact_file` tinyint NOT NULL DEFAULT 1 COMMENT 'Flag indicating if file is belong contact image',
+  `is_contact_file` tinyint DEFAULT 0 COMMENT 'Flag indicating if file is belong contact image',
   `contact_id` int unsigned COMMENT 'FK to Contact',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UK_file_path_directory`(file_path, directory_type),

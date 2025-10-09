@@ -943,7 +943,7 @@ class CRM_Fileanalyzer_Page_Preview extends CRM_Core_Page {
     }
     elseif ($directoryType === self::DIRECTORY_CONTRIBUTE) {
       $breadcrumb[] = [
-        'title' => ts('Contribute Images Dashboard'),
+        'title' => ts('Public Images Dashboard'),
         'url' => CRM_Utils_System::url('civicrm/file-analyzer/contribute-dashboard')
       ];
     }

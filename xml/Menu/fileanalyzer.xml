@@ -7,9 +7,9 @@
     <access_arguments>administer CiviCRM</access_arguments>
   </item>
   <item>
-    <path>civicrm/file-analyzer/contribute-dashboard</path>
+    <path>civicrm/file-analyzer/public-dashboard</path>
     <page_callback>CRM_Fileanalyzer_Page_ContributeDashboard</page_callback>
-    <title>Contribute Images Dashboard</title>
+    <title>Public Images Dashboard</title>
     <access_arguments>administer CiviCRM</access_arguments>
   </item>
   <item>

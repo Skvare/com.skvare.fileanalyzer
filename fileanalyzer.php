@@ -62,11 +62,11 @@ function fileanalyzer_civicrm_navigationMenu(&$menu) {
     'separator' => 0,
   ]);
 
-  // Add Contribute Images Dashboard submenu item
+  // Add Public Images Dashboard submenu item
   _fileanalyzer_civix_insert_navigation_menu($menu, 'Administer/System Settings/file_analyzer_main', [
-    'label' => ts('Contribute Images Dashboard'),
+    'label' => ts('Public Images Dashboard'),
     'name' => 'file_analyzer_contribute',
-    'url' => 'civicrm/file-analyzer/contribute-dashboard',
+    'url' => 'civicrm/file-analyzer/public-dashboard',
     'permission' => 'administer CiviCRM',
     'operator' => 'OR',
     'separator' => 0,

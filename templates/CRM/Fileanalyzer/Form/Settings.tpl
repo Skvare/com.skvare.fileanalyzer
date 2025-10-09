@@ -22,10 +22,10 @@
         <span class="description">Monitor attachments stored in custom directories. This includes contact photos, uploaded documents, resumes, contracts, and other files attached through custom file fields.</span>
       </div>
       <div class="header-links">
-        <a href="{crmURL p='civicrm/file-analyzer/contribute-dashboard'}" class="button">
-          <i class="crm-i fa-dashboard"></i> {ts}Contribution Files Dashboard{/ts}
+        <a href="{crmURL p='civicrm/file-analyzer/public-dashboard'}" class="button">
+          <i class="crm-i fa-dashboard"></i> {ts}Public Files Dashboard{/ts}
         </a>
-        <span class="description">Track files in the contribute upload directory. This covers images and documents associated with premium gifts, thank-you materials, and CiviContribute related files.</span>
+        <span class="description">Track files in the public upload directory. This covers images and documents associated with premium gifts, thank-you materials, and CiviContribute related files.</span>
       </div>
     </div>
 

@@ -28,9 +28,19 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
   const REFERENCE_FILE_RECORD = 'file_record';
   const REFERENCE_CONTACT_IMAGE = 'contact_image';
-  const REFERENCE_CONTRIBUTION_PAGE = 'contribution_page';
-  const REFERENCE_MESSAGE_TEMPLATE = 'message_template';
   const REFERENCE_CUSTOM_FIELD = 'custom_field';
+
+  const REFERENCE_CONTRIBUTION_PAGE = 'contribution_page';
+  const REFERENCE_EVENT_PAGE = 'event_page';
+  const REFERENCE_MESSAGE_TEMPLATE = 'message_template';
+  const REFERENCE_ACTIVITY_ATTACHMENT = 'activity_attachment';
+  const REFERENCE_CASE_ATTACHMENT = 'case_attachment';
+  const REFERENCE_MAILING_ATTACHMENT = 'mailing_attachment';
+  const REFERENCE_GRANT_ATTACHMENT = 'grant_attachment';
+
+
+  public static $customFieldRecords = [];
+  public static $tableMapping = [];
 
   /**
    * Main scheduled job entry point for file analysis and cleanup
@@ -64,7 +74,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       foreach ($directoriesToScan as $dirType) {
         // Create scan record
         $scanId = self::createScanRecord($dirType);
-
+        self::$tableMapping = CRM_Fileanalyzer_BAO_FileanalyzerReference::tableMapping();
         try {
           // Perform comprehensive file scan
           $scanResult = self::performFileScanDB($dirType, $scanId);
@@ -120,9 +130,9 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         'messages' => [
           "Scan completed for {$directory_type} directory(ies). Found {$totalAbandonedFiles} abandoned files",
           "Total files scanned: {$totalFiles}",
-          "Auto-deleted: {$totalDeleted} files"
+          "Auto-deleted: {$totalDeleted} files",
         ],
-        'data' => $scanResults
+        'data' => $scanResults,
       ];
 
     }
@@ -163,6 +173,11 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     $abandonedSize = 0;
     $activeCount = 0;
     $abandonedCount = 0;
+
+    if ($directory_type == self::DIRECTORY_CUSTOM) {
+      $fileFields = self::getFileCustomFields();
+      self::$customFieldRecords = self::buildFileToEntityMap($fileFields);
+    }
 
     // Use database transaction for consistency
     $transaction = new CRM_Core_Transaction();
@@ -249,6 +264,12 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           'last_scanned_date' => date('Y-m-d H:i:s'),
           'scan_status' => self::SCAN_STATUS_SCANNED,
         ];
+        if (!empty($fileInUse['is_contact_file'])) {
+          $fileData['is_contact_file'] = 1;
+          if (!empty($fileInUse['contact_id'])) {
+            $fileData['contact_id'] = $fileInUse['contact_id'];
+          }
+        }
 
         // Link to civicrm_file if found
         if ($fileInUse['file_id']) {
@@ -324,18 +345,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
       $fileResult = CRM_Core_DAO::executeQuery($fileQuery, $fileParams);
       if ($fileResult->fetch()) {
-        $result['in_use'] = TRUE;
         $result['file_id'] = $fileResult->id;
-        $result['references'][] = [
-          'reference_type' => self::REFERENCE_FILE_RECORD,
-          'entity_table' => 'civicrm_file',
-          'entity_id' => $fileResult->id,
-          'details' => json_encode([
-            'uri' => $fileResult->uri,
-            'mime_type' => $fileResult->mime_type,
-            'description' => $fileResult->description,
-          ]),
-        ];
 
         // Check entity file relationships
         $entityQuery = "
@@ -346,41 +356,56 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         $entityParams = [1 => [$fileResult->id, 'Integer']];
         $entityResult = CRM_Core_DAO::executeQuery($entityQuery, $entityParams);
 
-        while ($entityResult->fetch()) {
+        if ($entityResult->fetch()) {
+          $result['in_use'] = TRUE;
           $result['references'][] = [
             'reference_type' => self::REFERENCE_FILE_RECORD,
-            'entity_table' => $entityResult->entity_table,
+            'entity_table' => self::$tableMapping[$entityResult->entity_table],
             'entity_id' => $entityResult->entity_id,
+            'field_name' => 'Attachment',
+            'details' => json_encode([
+              'linked_through_file_id' => $fileResult->id,
+            ]),
+          ];
+        }
+        elseif (array_key_exists($fileResult->id, self::$customFieldRecords)) {
+          $result['in_use'] = TRUE;
+          $result['references'][] = [
+            'reference_type' => self::REFERENCE_CUSTOM_FIELD,
+            'entity_table' => self::$customFieldRecords[$fileResult->id]['entity_table'],
+            'entity_id' => self::$customFieldRecords[$fileResult->id]['entity_id'],
+            'field_name' => self::$customFieldRecords[$fileResult->id]['field_label'],
             'details' => json_encode([
               'linked_through_file_id' => $fileResult->id,
             ]),
           ];
         }
       }
-
-      // Check contact image_URL
-      $contactQuery = "
+      else {
+        // Check contact image_URL
+        $contactQuery = "
         SELECT id, image_URL
         FROM civicrm_contact
         WHERE image_URL LIKE %1
-        LIMIT 5
+        LIMIT 1
       ";
-      $contactParams = [1 => ['%' . $filename . '%', 'String']];
-      $contactResult = CRM_Core_DAO::executeQuery($contactQuery, $contactParams);
-
-      while ($contactResult->fetch()) {
-        $result['in_use'] = TRUE;
-        $result['references'][] = [
-          'reference_type' => self::REFERENCE_CONTACT_IMAGE,
-          'entity_table' => 'civicrm_contact',
-          'entity_id' => $contactResult->id,
-          'field_name' => 'image_URL',
-          'details' => json_encode([
-            'image_url' => $contactResult->image_URL,
-          ]),
-        ];
+        $contactParams = [1 => ['%' . $filename . '%', 'String']];
+        $contactResult = CRM_Core_DAO::executeQuery($contactQuery, $contactParams);
+        if ($contactResult->fetch()) {
+          $result['in_use'] = TRUE;
+          $result['is_contact_file'] = TRUE;
+          $result['contact_id'] = $contactResult->id;
+          $result['references'][] = [
+            'reference_type' => self::REFERENCE_CONTACT_IMAGE,
+            'entity_table' => 'civicrm_contact',
+            'entity_id' => $contactResult->id,
+            'field_name' => 'image_URL',
+            'details' => json_encode([
+              'image_url' => $contactResult->image_URL,
+            ]),
+          ];
+        }
       }
-
     }
     elseif ($directory_type === self::DIRECTORY_CONTRIBUTE) {
       // Check contribution pages
@@ -413,6 +438,50 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           ]),
         ];
       }
+
+      // Check contribution pages
+      $eventQuery = "
+        SELECT id, title, summary, description, event_full_text, intro_text, footer_text, thankyou_text
+        FROM civicrm_event
+        WHERE summary LIKE %1 OR description LIKE %1 OR event_full_text LIKE %1 OR intro_text LIKE %1 OR footer_text LIKE %1 OR thankyou_text LIKE %1 
+      ";
+      $eventParams = [1 => ['%' . $filename . '%', 'String']];
+      $eventResult = CRM_Core_DAO::executeQuery($eventQuery, $eventParams);
+
+      while ($eventResult->fetch()) {
+        $result['in_use'] = TRUE;
+        $foundIn = [];
+        if (strpos($eventResult->summary, $filename) !== FALSE) {
+          $foundIn[] = 'summary';
+        }
+        if (strpos($eventResult->description, $filename) !== FALSE) {
+          $foundIn[] = 'description';
+        }
+        if (strpos($eventResult->event_full_text, $filename) !== FALSE) {
+          $foundIn[] = 'event_full_text';
+        }
+        if (strpos($eventResult->intro_text, $filename) !== FALSE) {
+          $foundIn[] = 'intro_text';
+        }
+        if (strpos($eventResult->footer_text, $filename) !== FALSE) {
+          $foundIn[] = 'footer_text';
+        }
+        if (strpos($eventResult->thankyou_text, $filename) !== FALSE) {
+          $foundIn[] = 'thankyou_text';
+        }
+
+        $result['references'][] = [
+          'reference_type' => self::REFERENCE_EVENT_PAGE,
+          'entity_table' => 'civicrm_event',
+          'entity_id' => $eventResult->id,
+          'field_name' => implode(',', $foundIn),
+          'details' => json_encode([
+            'title' => $eventResult->title,
+            'found_in' => $foundIn,
+          ]),
+        ];
+      }
+
 
       // Check message templates
       $templateQuery = "
@@ -450,7 +519,6 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   private static function storeFileReferences($fileAnalyzerId, $references) {
     // Clear existing references
     self::clearFileReferences($fileAnalyzerId);
-
     // Insert new references
     foreach ($references as $ref) {
       $params = [
@@ -464,6 +532,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         'last_verified_date' => date('Y-m-d H:i:s'),
         'is_active' => 1,
       ];
+
       $sql = CRM_Core_DAO::composeQuery(
         "INSERT INTO civicrm_file_analyzer_reference 
         (file_analyzer_id, reference_type, entity_table, entity_id, field_name, 
@@ -794,7 +863,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       'id', 'file_id', 'file_size', 'is_abandoned', 'is_active',
       'file_analyzer_id', 'entity_id', 'deleted_by', 'was_abandoned',
       'total_files_scanned', 'active_files', 'abandoned_files',
-      'total_size', 'abandoned_size', 'scan_duration'
+      'total_size', 'abandoned_size', 'scan_duration',
     ];
 
     if (in_array($fieldName, $integerFields)) {
@@ -1264,4 +1333,126 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       'excluded_extensions' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_extensions') ?: '')),
     ];
   }
+
+  /**
+   * Retrieve all custom fields of type File
+   *
+   * @return array Custom field information
+   */
+  public static function getFileCustomFields() {
+    $fileFields = [];
+
+    try {
+      $customFields = civicrm_api3('CustomField', 'get', [
+        'sequential' => 1,
+        'data_type' => 'File',
+        'is_active' => 1,
+        'options' => ['limit' => 0],
+        'api.CustomGroup.get' => [
+          'id' => '$value.custom_group_id',
+        ],
+      ]);
+
+      foreach ($customFields['values'] as $field) {
+        if (!empty($field['api.CustomGroup.get']['values'])) {
+          $customGroup = $field['api.CustomGroup.get']['values'][0];
+
+          $fileFields[] = [
+            'field_id' => $field['id'],
+            'field_name' => $field['name'],
+            'field_label' => $field['label'],
+            'column_name' => $field['column_name'],
+            'custom_group_id' => $customGroup['id'],
+            'table_name' => $customGroup['table_name'],
+            'extends' => $customGroup['extends'],
+            'extends_entity_column_value' => $customGroup['extends_entity_column_value'] ?? NULL,
+          ];
+        }
+      }
+    }
+    catch (CiviCRM_API3_Exception $e) {
+      CRM_Core_Error::debug_log_message('Error fetching custom file fields: ' . $e->getMessage());
+    }
+
+    return $fileFields;
+  }
+
+  /**
+   * Steps 2 & 3: Build a map of file IDs to entity information
+   *
+   * @param array $fileFields List of file custom fields
+   * @return array Map of file_id => entity information
+   */
+  public static function buildFileToEntityMap($fileFields) {
+    $fileToEntityMap = [];
+
+    foreach ($fileFields as $fieldInfo) {
+      $tableName = $fieldInfo['table_name'];
+      $columnName = $fieldInfo['column_name'];
+
+      // Query to get file IDs and entity IDs from custom table
+      $query = "
+        SELECT 
+          ct.entity_id,
+          ct.{$columnName} as file_id,
+          '{$fieldInfo['extends']}' as entity_table
+        FROM {$tableName} ct
+        WHERE ct.{$columnName} IS NOT NULL
+        AND ct.{$columnName} != ''
+      ";
+
+      $dao = CRM_Core_DAO::executeQuery($query);
+
+      while ($dao->fetch()) {
+        $fileId = (int)$dao->file_id;
+
+        if (!isset($fileToEntityMap[$fileId])) {
+          //$fileToEntityMap[$fileId] = [];
+        }
+
+        $fileToEntityMap[$fileId] = [
+          'entity_id' => $dao->entity_id,
+          'entity_table' => self::mapExtendsToEntityTable($dao->entity_table),
+          //'entity_table' => $dao->entity_table,
+          'field_id' => $fieldInfo['field_id'],
+          'field_label' => $fieldInfo['field_label'],
+          'custom_table' => $tableName,
+          'custom_column' => $columnName,
+        ];
+      }
+    }
+
+    return $fileToEntityMap;
+  }
+
+  /**
+   * Map CustomGroup 'extends' value to actual entity table name
+   *
+   * @param string $extends The extends value from custom group
+   * @return string The actual database table name
+   */
+  private static function mapExtendsToEntityTable($extends) {
+    $mapping = [
+      'Contact' => 'civicrm_contact',
+      'Individual' => 'civicrm_contact',
+      'Household' => 'civicrm_contact',
+      'Organization' => 'civicrm_contact',
+      'Activity' => 'civicrm_activity',
+      'Contribution' => 'civicrm_contribution',
+      'Membership' => 'civicrm_membership',
+      'Participant' => 'civicrm_participant',
+      'Event' => 'civicrm_event',
+      'Case' => 'civicrm_case',
+      'Grant' => 'civicrm_grant',
+      'Pledge' => 'civicrm_pledge',
+      'Relationship' => 'civicrm_relationship',
+      'Campaign' => 'civicrm_campaign',
+      'Case' => 'civicrm_case',
+      'Note' => 'civicrm_note',
+      'Pledge' => 'civicrm_pledge',
+    ];
+
+    return $mapping[$extends] ?? $extends;
+  }
+
 }

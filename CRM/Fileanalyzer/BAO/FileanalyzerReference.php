@@ -15,7 +15,7 @@ class CRM_Fileanalyzer_BAO_FileanalyzerReference extends CRM_Fileanalyzer_DAO_Fi
    */
   public static function getReferenceTypes() {
     return [
-      'file_record' => ts('File Record'),
+      'file_record' => ts('Attachment Record'),
       'contact_image' => ts('Contact Image'),
       'contribution_page' => ts('Contribution Page'),
       'message_template' => ts('Message Template'),
@@ -228,6 +228,30 @@ class CRM_Fileanalyzer_BAO_FileanalyzerReference extends CRM_Fileanalyzer_DAO_Fi
     ]);
 
     return TRUE;
+  }
+
+  public static function tableMapping() {
+    $mapping = [
+      // managed files tables.
+      'civicrm_contact' => 'Contact',
+      'civicrm_activity' => 'Activity',
+      'civicrm_contribution' => 'Contribution',
+      'civicrm_membership' => 'Membership',
+      'civicrm_participant' => 'Participant',
+      'civicrm_event' => 'Event',
+      'civicrm_case' => 'Case',
+      'civicrm_grant' => 'Grant',
+      'civicrm_pledge' => 'Pledge',
+      'civicrm_relationship' => 'Relationship',
+      'civicrm_campaign' => 'Campaign',
+      'civicrm_case' => 'Case',
+      'civicrm_note' => 'Note',
+      'civicrm_pledge' => 'Pledge',
+      // public file table.
+      'civicrm_contribution_page' => 'Contribution Page',
+      'civicrm_msg_template' => 'Message Template',
+    ];
+    return $mapping;
   }
 
 }

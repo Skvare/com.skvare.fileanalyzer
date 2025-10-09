@@ -33,7 +33,7 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
    */
   public function run() {
     // Set the browser title and page heading
-    CRM_Utils_System::setTitle(ts('Contribute Images Analyzer Dashboard'));
+    CRM_Utils_System::setTitle(ts('Public Images Analyzer Dashboard'));
 
     // Retrieve the latest scan results from cached JSON file for contribute directory
     $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE);
@@ -49,14 +49,16 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
         ],
         'directoryStats' => [
           'totalFiles' => 0,
-          'totalSize' => 0
+          'totalSize' => 0,
+          'abandonedSize' => 0,
+          'abandonedFiles' => 0,
         ],
         'active_files' => 0
       ];
 
       // Show message to user about no data
       CRM_Core_Session::setStatus(
-        ts('No contribute images scan data available. Please run the scheduled job first.'),
+        ts('No public images scan data available. Please run the scheduled job first.'),
         ts('No Data'),
         'info'
       );
@@ -65,24 +67,12 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
     // Assign scan date for display
     $this->assign('lastScanDate', $scanResults['scan_date']);
 
-    // Get abandoned files data from separate JSON file for contribute directory
-    $abandonedFiles = CRM_Fileanalyzer_API_FileAnalysis::getAbandonedFilesFromJson(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE);
-
-    // Enhance abandoned files with preview capabilities
-    $abandonedFiles = $this->enhanceFilesWithPreviewInfo($abandonedFiles);
-
     // Assign file analysis data to template for chart rendering
     // JSON encode is needed for JavaScript chart libraries
     $this->assign('fileData', json_encode($scanResults['fileAnalysis']));
 
-    // Assign abandoned files array to template for table display
-    $this->assign('abandonedFiles', $abandonedFiles);
-
     // Assign directory statistics for summary widgets
     $this->assign('directoryStats', $scanResults['directoryStats']);
-
-    // Calculate total size of abandoned files for summary display
-    $this->assign('totalAbandonedSize', array_sum(array_column($abandonedFiles, 'size')));
 
     // Assign directory type for template logic
     $this->assign('directoryType', CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE);
@@ -102,7 +92,6 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
     $this->assign('ajaxUrl', CRM_Utils_System::url('civicrm/ajax/file-analyzer'));
 
     // Check if files have export data available
-    $this->assign('canExport', !empty($abandonedFiles));
     $this->assign('exportFormats', ['csv' => 'CSV', 'json' => 'JSON']);
 
     // Load required frontend resources for dashboard functionality
@@ -255,7 +244,7 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
       'abandoned_count' => count($abandonedFiles),
       'abandoned_size' => array_sum(array_column($abandonedFiles, 'size')),
       'active_files' => $scanResults['active_files'] ?? 0,
-      'scan_date' => $scanResults['scan_date'] ?? null,
+      'scan_date' => $scanResults['scan_date'] ?? NULL,
       'directory_type' => CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE
     ];
   }
