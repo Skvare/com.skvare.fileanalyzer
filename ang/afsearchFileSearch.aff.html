@@ -1,0 +1,17 @@
+<div af-fieldset="">
+    <div class="af-markup">
+        <p><strong><a class="button" href="/civicrm/file-analyzer/dashboard">Back to dashboard</a></strong></p>
+    </div>
+    <div class="af-container af-layout-inline">
+        <af-field name="file_extension" />
+        <af-field name="scan_status" defn="{input_attrs: {multiple: true}}" />
+        <af-field name="Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.reference_type" defn="{input_attrs: {multiple: true}, options: [{id: 'file_record', label: 'Attachment Record'}, {id: 'contact_image', label: 'Contact Image'}, {id: 'contribution_page', label: 'Contribution Page'}, {id: 'custom_field', label: 'Custom Field'}, {id: 'activity_attachment', label: 'Activity Attachment'}, {id: 'case_attachment', label: 'Case Attachment'}, {id: 'mailing_attachment', label: 'Mailing Attachment'}, {id: 'grant_attachment', label: 'Grant Attachment'}]}" />
+        <af-field name="created_date" defn="{input_type: 'Select', search_range: true, input_attrs: {}, label: 'File Upload Date'}" />
+        <af-field name="Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table" defn="{input_attrs: {multiple: true}, options: [{id: 'civicrm_contact', label: 'Contact'}, {id: 'civicrm_activity', label: 'Activity'}, {id: 'civicrm_contribution', label: 'Contribution'}, {id: 'civicrm_membership', label: 'Membership'}, {id: 'civicrm_participant', label: 'Participant'}, {id: 'civicrm_event', label: 'Event'}, {id: 'civicrm_case', label: 'Case'}, {id: 'civicrm_grant', label: 'Grant'}, {id: 'civicrm_pledge', label: 'Pledge'}, {id: 'civicrm_relationship', label: 'Relationship'}, {id: 'civicrm_campaign', label: 'Campaign'}, {id: 'civicrm_note', label: 'Note'}]}" />
+    </div>
+    <div class="af-container af-layout-inline">
+        <af-field name="is_contact_file" defn="{input_type: 'Radio'}" />
+        <af-field name="is_abandoned" defn="{input_type: 'Radio'}" />
+    </div>
+    <crm-search-display-table search-name="Fileanalyzer_Search" display-name="Fileanalyzer_Search_Table_1"></crm-search-display-table>
+</div>

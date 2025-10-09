@@ -1,0 +1,175 @@
+{
+    "type": "search",
+    "requires": null,
+    "entity_type": null,
+    "join_entity": null,
+    "title": "Public File Search",
+    "description": null,
+    "placement": [],
+    "placement_filters": [],
+    "placement_weight": null,
+    "tags": null,
+    "icon": "fa-list-alt",
+    "server_route": "civicrm/fileanalyzer/public-search",
+    "is_public": false,
+    "permission": [
+      "administer CiviCRM"
+    ],
+    "permission_operator": "AND",
+    "redirect": null,
+    "submit_enabled": true,
+    "submit_limit": null,
+    "create_submission": false,
+    "manual_processing": false,
+    "allow_verification_by_email": false,
+    "email_confirmation_template_id": null,
+    "autosave_draft": false,
+    "navigation": null,
+    "modified_date": "2025-10-09 18:57:37",
+    "confirmation_type": "redirect_to_url",
+    "confirmation_message": null,
+    "layout": [
+      {
+        "#tag": "div",
+        "af-fieldset": "",
+        "#children": [
+          {
+            "#text": "\n  "
+          },
+          {
+            "#tag": "div",
+            "class": "af-markup",
+            "#children": [
+              {
+                "#text": "\n    "
+              },
+              {
+                "#tag": "p",
+                "#children": [
+                  {
+                    "#tag": "strong",
+                    "#children": [
+                      {
+                        "#tag": "a",
+                        "class": "button",
+                        "href": "/civicrm/file-analyzer/public-dashboard",
+                        "#children": [
+                          {
+                            "#text": "Back to dashboard"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "#text": "\n\n  "
+              }
+            ]
+          },
+          {
+            "#text": "\n  "
+          },
+          {
+            "#tag": "div",
+            "class": "af-container af-layout-inline",
+            "#children": [
+              {
+                "#text": "\n    "
+              },
+              {
+                "#tag": "af-field",
+                "name": "filename"
+              },
+              {
+                "#text": "\n    "
+              },
+              {
+                "#tag": "af-field",
+                "name": "file_extension"
+              },
+              {
+                "#text": "\n    "
+              },
+              {
+                "#tag": "af-field",
+                "name": "Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table",
+                "defn": {
+                  "input_attrs": {
+                    "multiple": true
+                  },
+                  "options": [
+                    {
+                      "id": "civicrm_contribution_page",
+                      "label": "Contribution Page"
+                    },
+                    {
+                      "id": "civicrm_msg_template",
+                      "label": "Message Template"
+                    },
+                    {
+                      "id": "civicrm_event",
+                      "label": "Event"
+                    }
+                  ]
+                }
+              },
+              {
+                "#text": "\n    "
+              },
+              {
+                "#tag": "af-field",
+                "name": "created_date",
+                "defn": {
+                  "input_type": "Select",
+                  "search_range": true,
+                  "input_attrs": []
+                }
+              },
+              {
+                "#text": "\n  "
+              }
+            ]
+          },
+          {
+            "#text": "\n  "
+          },
+          {
+            "#tag": "div",
+            "class": "af-container af-layout-inline",
+            "#children": [
+              {
+                "#text": "\n    "
+              },
+              {
+                "#tag": "af-field",
+                "name": "is_abandoned",
+                "defn": {
+                  "input_type": "Radio"
+                }
+              },
+              {
+                "#text": "\n  "
+              }
+            ]
+          },
+          {
+            "#text": "\n  "
+          },
+          {
+            "#tag": "crm-search-display-table",
+            "search-name": "Fileanalyzer_Public_Search",
+            "display-name": "Fileanalyzer_Public_Search_Table_1"
+          },
+          {
+            "#text": "\n"
+          }
+        ]
+      },
+      {
+        "#text": "\n"
+      }
+    ],
+    "name": "afsearchPublicFileSearch"
+  }
