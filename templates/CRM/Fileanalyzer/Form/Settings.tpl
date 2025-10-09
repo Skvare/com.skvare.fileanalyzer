@@ -333,6 +333,7 @@
   function showTestResults(result) {
     var resultsDiv = CRM.$('#testResults');
     var contentDiv = CRM.$('#testResultsContent');
+    console.log(result);
 
     var html = '<div class="result-item ' + (result.success ? 'success' : 'error') + '">';
     html += '<div class="result-status">';
@@ -342,13 +343,38 @@
 
     if (result.data) {
       html += '<div class="result-data">';
-      html += '<ul>';
+
       for (var key in result.data) {
         if (result.data.hasOwnProperty(key)) {
-          html += '<li><strong>' + key + ':</strong> ' + result.data[key] + '</li>';
+          var section = result.data[key];
+
+          html += '<h3>' + key.charAt(0).toUpperCase() + key.slice(1) + '</h3>';
+          html += '<ul>';
+
+          // Display summary stats
+          html += '<li><strong>Total Files:</strong> ' + section.total_files + '</li>';
+          html += '<li><strong>Total Size:</strong> ' + formatBytes(section.total_size) + '</li>';
+          html += '<li><strong>Active Files:</strong> ' + section.active_files + '</li>';
+          html += '<li><strong>Abandoned Count:</strong> ' + section.abandoned_count + '</li>';
+          html += '<li><strong>Abandoned Size:</strong> ' + formatBytes(section.abandoned_size) + '</li>';
+
+          // Display file types if available
+          if (section.file_types) {
+            html += '<li><strong>File Types:</strong><ul>';
+            for (var type in section.file_types) {
+              if (section.file_types.hasOwnProperty(type)) {
+                var fileType = section.file_types[type];
+                html += '<li>' + type.toUpperCase() + ': ' + fileType.count + ' files (' +
+                  formatBytes(fileType.size) + ', ' + fileType.abandoned_count + ' abandoned)</li>';
+              }
+            }
+            html += '</ul></li>';
+          }
+
+          html += '</ul>';
         }
       }
-      html += '</ul>';
+
       html += '</div>';
     }
 
@@ -360,6 +386,16 @@
 
     contentDiv.html(html);
     resultsDiv.show();
+  }
+
+  // Helper function to format bytes
+  function formatBytes(bytes) {
+    if (typeof bytes === 'string') bytes = parseInt(bytes);
+    if (bytes === 0) return '0 Bytes';
+    var k = 1024;
+    var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   }
 
   // Reset form to defaults

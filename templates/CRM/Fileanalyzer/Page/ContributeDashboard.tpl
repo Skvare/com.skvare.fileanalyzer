@@ -19,25 +19,11 @@
             <i class="crm-i fa-files-o"></i> {ts}File Listing{/ts}
           </a>
           <a href="{crmURL p='civicrm/file-analyzer/dashboard'}" class="button">
-            <i class="crm-i fa-files-o"></i> {ts}Custom Files{/ts}
+            <i class="crm-i fa-files-o"></i> {ts}Custom Files Dashboard{/ts}
           </a>
           <a href="{crmURL p='civicrm/admin/setting/fileanalyzer'}" class="button">
             <i class="crm-i fa-cog"></i> {ts}Settings{/ts}
           </a>
-          {if $canExport}
-            <div class="export-dropdown">
-              <button class="button export-btn" onclick="toggleExportMenu()">
-                <i class="crm-i fa-download"></i> {ts}Export Data{/ts} <i class="crm-i fa-caret-down"></i>
-              </button>
-              <div class="export-menu" id="exportMenu" style="display:none;">
-                {foreach from=$exportFormats key=format item=label}
-                  <a href="{$exportUrl}&format={$format}" class="export-option">
-                    <i class="crm-i fa-file-text-o"></i> {ts}Export as{/ts} {$label}
-                  </a>
-                {/foreach}
-              </div>
-            </div>
-          {/if}
           <button onclick="refreshData()" class="button" id="refreshBtn">
             <i class="crm-i fa-refresh"></i> {ts}Refresh{/ts}
           </button>

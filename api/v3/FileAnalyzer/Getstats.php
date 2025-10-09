@@ -45,17 +45,15 @@ function civicrm_api3_file_analyzer_Getstats($params) {
 
     if ($directoryType === 'all') {
       // Get stats for all directories
-      $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults();
-
+      $scanResults['custom'] = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults('custom');
+      $scanResults['contribute'] = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults('contribute');
       if ($scanResults) {
         foreach ($scanResults as $type => $results) {
-          $abandonedFiles = CRM_Fileanalyzer_API_FileAnalysis::getAbandonedFilesFromJson($type);
-
           $stats[$type] = [
             'total_files' => $results['directoryStats']['totalFiles'],
             'total_size' => $results['directoryStats']['totalSize'],
-            'abandoned_count' => count($abandonedFiles),
-            'abandoned_size' => array_sum(array_column($abandonedFiles, 'size')),
+            'abandoned_count' => $results['directoryStats']['abandonedFiles'],
+            'abandoned_size' => $results['directoryStats']['abandonedSize'],
             'active_files' => $results['active_files'] ?? 0,
             'file_types' => $results['fileAnalysis']['fileTypes'] ?? [],
             'monthly_data' => $results['fileAnalysis']['monthly'] ?? [],
@@ -76,14 +74,13 @@ function civicrm_api3_file_analyzer_Getstats($params) {
     else {
       // Get stats for specific directory
       $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults($directoryType);
-      $abandonedFiles = CRM_Fileanalyzer_API_FileAnalysis::getAbandonedFilesFromJson($directoryType);
 
       if ($scanResults) {
         $stats = [
           'total_files' => $scanResults['directoryStats']['totalFiles'],
           'total_size' => $scanResults['directoryStats']['totalSize'],
-          'abandoned_count' => count($abandonedFiles),
-          'abandoned_size' => array_sum(array_column($abandonedFiles, 'size')),
+          'abandoned_count' => $scanResults['directoryStats']['abandonedFiles'],
+          'abandoned_size' => $scanResults['directoryStats']['abandonedSize'],
           'active_files' => $scanResults['active_files'] ?? 0,
           'file_types' => $scanResults['fileAnalysis']['fileTypes'] ?? [],
           'monthly_data' => $scanResults['fileAnalysis']['monthly'] ?? [],
