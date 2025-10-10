@@ -6,15 +6,12 @@
   var FileAnalyzer = {
     charts: {},
     selectedFiles: [],
-    previewCache: {},
 
     init: function() {
       this.initializeCharts();
       this.bindEvents();
       this.formatFileSizes();
       this.updateStatistics();
-      this.initializePreviewFeatures();
-      this.initializeExportFeatures();
     },
 
     initializeCharts: function() {
@@ -218,252 +215,10 @@
         self.refreshData();
       });
 
-      // File selection
-      $('.file-checkbox').on('change', function() {
-        self.updateSelection();
-      });
-
-      // Select all checkbox
-      $('#selectAll').on('change', function() {
-        var isChecked = $(this).is(':checked');
-        $('.file-checkbox').prop('checked', isChecked).trigger('change');
-      });
-
       // Timeline chart metric selector
       $('#timelineMetric').on('change', function() {
         self.updateTimelineChart($(this).val());
       });
-
-      // Preview thumbnails
-      $('.preview-thumbnail').on('click', function() {
-        var previewUrl = $(this).data('preview-url');
-        var filename = $(this).closest('tr').find('.filename').text();
-        self.showFilePreview(previewUrl, filename);
-      });
-    },
-
-    initializePreviewFeatures: function() {
-      var self = this;
-
-      // Initialize preview modal events
-      $(document).on('keydown', function(e) {
-        if (e.keyCode === 27) { // Escape key
-          self.closePreviewModal();
-        }
-      });
-
-      // Click outside to close preview
-      $(document).on('click', '.preview-modal-overlay', function() {
-        self.closePreviewModal();
-      });
-
-      // Prevent clicks inside modal from closing it
-      $(document).on('click', '.preview-modal-content', function(e) {
-        e.stopPropagation();
-      });
-    },
-
-    initializeExportFeatures: function() {
-      var self = this;
-
-      // Export dropdown
-      $(document).on('click', '.export-btn', function(e) {
-        e.stopPropagation();
-        self.toggleExportMenu();
-      });
-
-      // Close export menu when clicking outside
-      $(document).on('click', function(e) {
-        if (!$(e.target).closest('.export-dropdown').length) {
-          $('#exportMenu').hide();
-        }
-      });
-
-      // Handle export option clicks
-      $(document).on('click', '.export-option', function(e) {
-        e.preventDefault();
-        var format = $(this).attr('href').split('format=')[1];
-        self.triggerExport(format);
-        $('#exportMenu').hide();
-      });
-    },
-
-    showFilePreview: function(previewUrl, filename) {
-      var self = this;
-      var modal = $('#filePreviewModal');
-      var body = $('#previewModalBody');
-      var title = $('#previewModalTitle');
-      var fullPreviewBtn = $('#fullPreviewBtn');
-
-      title.text(filename || 'File Preview');
-      fullPreviewBtn.attr('data-url', previewUrl);
-
-      modal.show();
-      body.html('<div class="loading"><i class="crm-i fa-spinner fa-spin"></i> ' + FileAnalyzerData.previewLoadingMsg + '</div>');
-
-      // Check if it's an image or other file type
-      var extension = previewUrl.split('.').pop().toLowerCase();
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(extension)) {
-        self.loadImagePreview(previewUrl, filename, body);
-      } else if (extension === 'pdf') {
-        self.loadPDFPreview(previewUrl, body);
-      } else {
-        self.loadGenericPreview(previewUrl, body);
-      }
-    },
-
-    loadImagePreview: function(previewUrl, filename, container) {
-      var img = new Image();
-      img.onload = function() {
-        container.html(
-          '<div class="image-preview">' +
-          '<img src="' + previewUrl + '" alt="' + filename + '" style="max-width: 100%; max-height: 70vh; border-radius: 4px;" />' +
-          '<div class="image-info" style="margin-top: 1rem; color: #6c757d; font-size: 0.9rem;">' +
-          'Dimensions: ' + this.naturalWidth + ' × ' + this.naturalHeight + ' pixels' +
-          '</div>' +
-          '</div>'
-        );
-      };
-      img.onerror = function() {
-        container.html('<div class="preview-error"><i class="crm-i fa-exclamation-triangle"></i> ' + FileAnalyzerData.previewErrorMsg + '</div>');
-      };
-      img.src = previewUrl;
-    },
-
-    loadPDFPreview: function(previewUrl, container) {
-      container.html(
-        '<div class="pdf-preview">' +
-        '<iframe src="' + previewUrl + '" style="width: 100%; height: 500px; border: 1px solid #ddd; border-radius: 4px;"></iframe>' +
-        '<div class="preview-note" style="margin-top: 1rem; color: #6c757d; font-size: 0.9rem; text-align: center;">' +
-        'PDF preview - Click "Open Full View" for better experience' +
-        '</div>' +
-        '</div>'
-      );
-    },
-
-    loadGenericPreview: function(previewUrl, container) {
-      // For text files and other generic content
-      var self = this;
-
-      $.ajax({
-        url: previewUrl,
-        method: 'GET',
-        success: function(data) {
-          if (typeof data === 'string') {
-            // Text content
-            container.html(
-              '<div class="text-preview">' +
-              '<pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; overflow: auto; max-height: 400px; font-family: monospace; font-size: 0.9rem;">' +
-              self.escapeHtml(data.substring(0, 2000)) + (data.length > 2000 ? '\n\n... (truncated)' : '') +
-              '</pre>' +
-              '</div>'
-            );
-          } else {
-            // Fallback for non-text content
-            container.html(
-              '<div class="generic-preview" style="text-align: center; padding: 2rem;">' +
-              '<i class="crm-i fa-file-o" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem;"></i>' +
-              '<p>Preview not available for this file type.</p>' +
-              '<p>Click "Open Full View" to download or view the file.</p>' +
-              '</div>'
-            );
-          }
-        },
-        error: function() {
-          container.html('<div class="preview-error"><i class="crm-i fa-exclamation-triangle"></i> ' + FileAnalyzerData.previewErrorMsg + '</div>');
-        }
-      });
-    },
-
-    closePreviewModal: function() {
-      $('#filePreviewModal').hide();
-    },
-
-    openFullPreview: function() {
-      var url = $('#fullPreviewBtn').attr('data-url');
-      if (url) {
-        window.open(url, '_blank', 'width=1024,height=768,scrollbars=yes,resizable=yes');
-      }
-    },
-
-    toggleExportMenu: function() {
-      var menu = $('#exportMenu');
-      menu.toggle();
-    },
-
-    triggerExport: function(format) {
-      var self = this;
-
-      // Show loading state
-      CRM.status({}, $.Deferred().resolve());
-
-      // Trigger export via AJAX first to prepare the file
-      $.ajax({
-        url: FileAnalyzerData.ajaxUrl,
-        type: 'POST',
-        data: {
-          operation: 'triggerExport',
-          directory_type: FileAnalyzerData.directoryType,
-          format: format
-        },
-        dataType: 'json',
-        success: function(response) {
-          if (response.export_url) {
-            // Redirect to download the file
-            window.location.href = response.export_url;
-            self.showNotification('Export initiated successfully', 'success');
-          } else {
-            self.showNotification('Export failed: ' + (response.error || 'Unknown error'), 'error');
-          }
-        },
-        error: function() {
-          self.showNotification('Export request failed', 'error');
-        }
-      });
-    },
-
-    previewSelectedFiles: function() {
-      var selectedFiles = this.selectedFiles;
-      if (selectedFiles.length === 0) {
-        this.showNotification('Please select files to preview', 'error');
-        return;
-      }
-
-      var modal = $('#filePreviewModal');
-      var body = $('#previewModalBody');
-      var title = $('#previewModalTitle');
-
-      title.text('Selected Files Preview (' + selectedFiles.length + ' files)');
-      modal.show();
-
-      var galleryHtml = '<div class="preview-gallery">';
-      var self = this;
-
-      selectedFiles.forEach(function(filename) {
-        var file = FileAnalyzerData.abandonedFiles.find(function(f) {
-          return f.filename === filename;
-        });
-
-        if (file && file.can_preview) {
-          galleryHtml += '<div class="gallery-item" onclick="FileAnalyzer.showFilePreview(\'' + file.preview_url + '\', \'' + file.filenameOnly + '\')">';
-          galleryHtml += '<div class="gallery-thumbnail">';
-
-          if (file.preview_type === 'image') {
-            galleryHtml += '<img src="' + file.preview_url + '" alt="' + file.filenameOnly + '" />';
-          } else if (file.preview_type === 'pdf') {
-            galleryHtml += '<i class="crm-i fa-file-pdf-o" style="font-size: 2rem; color: #dc3545;"></i>';
-          } else {
-            galleryHtml += '<i class="crm-i fa-file-o" style="font-size: 2rem; color: #6c757d;"></i>';
-          }
-
-          galleryHtml += '</div>';
-          galleryHtml += '<div class="gallery-filename">' + file.filenameOnly + '</div>';
-          galleryHtml += '</div>';
-        }
-      });
-      galleryHtml += '</div>';
-
-      body.html(galleryHtml);
     },
 
     formatFileSizes: function() {
@@ -486,32 +241,6 @@
       $('#totalSize').text(this.formatBytes(stats.totalSize || 0));
       $('#abandonedCount').text(this.formatNumber(stats.abandonedFiles || 0));
       $('#wastedSpace').text(this.formatBytes(stats.abandonedSize || 0));
-    },
-
-    updateSelection: function() {
-      var selected = $('.file-checkbox:checked');
-      this.selectedFiles = selected.map(function() {
-        return $(this).val();
-      }).get();
-
-      $('#selectedCount').text(this.selectedFiles.length);
-
-      if (this.selectedFiles.length > 0) {
-        $('#bulkActionsBar').show();
-        $('#bulkDeleteBtn').show();
-        $('#bulkPreviewBtn').show();
-      } else {
-        $('#bulkActionsBar').hide();
-        $('#bulkDeleteBtn').hide();
-        $('#bulkPreviewBtn').hide();
-      }
-
-      // Update select all checkbox state
-      var totalCheckboxes = $('.file-checkbox').length;
-      var checkedCheckboxes = $('.file-checkbox:checked').length;
-
-      $('#selectAll').prop('indeterminate', checkedCheckboxes > 0 && checkedCheckboxes < totalCheckboxes);
-      $('#selectAll').prop('checked', checkedCheckboxes === totalCheckboxes && totalCheckboxes > 0);
     },
 
     updateTimelineChart: function(metric) {
@@ -573,24 +302,6 @@
 
     formatNumber: function(num) {
       return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    },
-
-    escapeHtml: function(text) {
-      var map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-      };
-      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-    },
-
-    showNotification: function(message, type) {
-      type = type || 'info';
-      CRM.alert(message, '', type, {
-        expires: 5000
-      });
     }
   };
 

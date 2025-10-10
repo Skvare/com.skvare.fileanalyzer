@@ -20,11 +20,9 @@ class CRM_Fileanalyzer_Page_Dashboard extends CRM_Core_Page {
    *
    * This method orchestrates the dashboard display by:
    * 1. Setting the page title
-   * 2. Retrieving cached scan results from JSON files
+   * 2. Retrieving cached scan results from database files
    * 3. Processing and assigning data to the template
    * 4. Loading required CSS/JS resources
-   * 5. Setting up preview and export URLs
-   * 6. Calling parent run method to render the page
    *
    * @return void
    */
@@ -65,28 +63,12 @@ class CRM_Fileanalyzer_Page_Dashboard extends CRM_Core_Page {
     // Assign file analysis data to template for chart rendering
     // JSON encode is needed for JavaScript chart libraries
     $this->assign('fileData', json_encode($scanResults['fileAnalysis']));
-    $abandonedFiles = [];
-    // Assign enhanced abandoned files array to template for table display
-    // $this->assign('abandonedFiles', $abandonedFiles);
-
+  
     // Assign directory statistics for summary widgets
     $this->assign('directoryStats', $scanResults['directoryStats']);
 
-    // Calculate total size of abandoned files for summary display
-    // Uses array_column to extract 'size' values, then sum them
-    $this->assign('totalAbandonedSize', array_sum(array_column($abandonedFiles, 'size')));
-
     // Assign directory type for template logic
     $this->assign('directoryType', CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CUSTOM);
-
-    // Assign URLs for preview and export functionality
-    $this->assign('previewUrl', CRM_Utils_System::url('civicrm/file-analyzer/preview'));
-    $this->assign('exportUrl', CRM_Utils_System::url('civicrm/file-analyzer/export'));
-    $this->assign('ajaxUrl', CRM_Utils_System::url('civicrm/ajax/file-analyzer'));
-
-    // Check if files have export data available
-    $this->assign('canExport', !empty($abandonedFiles));
-    $this->assign('exportFormats', ['csv' => 'CSV', 'json' => 'JSON']);
 
     // Load required frontend resources for dashboard functionality
     CRM_Core_Resources::singleton()

@@ -2,29 +2,29 @@
 use CRM_Fileanalyzer_ExtensionUtil as E;
 
 /**
- * CiviCRM File Analyzer Extension - Contribute Images Dashboard Page
+ * CiviCRM File Analyzer Extension - Public Images Dashboard Page
  *
- * This class handles the contribute images dashboard display for the File Analyzer extension.
+ * This class handles the Public images dashboard display for the File Analyzer extension.
  * It reads pre-generated JSON files created by the scheduled scan job and presents
  * the data in a user-friendly dashboard with charts and statistics specifically for
- * contribute page images.
+ * public page images.
  *
  * Key Features:
- * - Reads cached JSON data for contribute directory instead of performing live file scanning
+ * - Reads cached table data for directory instead of performing live file scanning
  * - Displays file analysis statistics and charts for contribute images
- * - Shows abandoned contribute image files information
- * - Provides directory usage statistics for contribute images
+ * - Shows abandoned public image files information
+ * - Provides directory usage statistics for public images
  * - Handles cases where no scan data is available
  * - Reuses the same JavaScript dashboard components
  */
 class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
 
   /**
-   * Main run method - Entry point for contribute dashboard page
+   * Main run method - Entry point for public dashboard page
    *
    * This method orchestrates the contribute dashboard display by:
    * 1. Setting the page title
-   * 2. Retrieving cached scan results from JSON files for contribute directory
+   * 2. Retrieving cached scan results from table to public directory
    * 3. Processing and assigning data to the template
    * 4. Loading required CSS/JS resources (reusing existing dashboard assets)
    * 5. Calling parent run method to render the page
@@ -35,10 +35,10 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
     // Set the browser title and page heading
     CRM_Utils_System::setTitle(ts('Public Images Analyzer Dashboard'));
 
-    // Retrieve the latest scan results from cached JSON file for contribute directory
+    // Retrieve the latest scan results for public directory
     $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE);
 
-    // Handle case where no contribute scan results are available
+    // Handle case where no public scan results are available
     if (!$scanResults) {
       // Create empty structure to prevent template errors
       $scanResults = [
@@ -85,14 +85,6 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
     $baseDir = dirname($config->customFileUploadDir);
     $contributePath = $baseDir . '/persist/contribute/images';
     $this->assign('directoryPath', $contributePath);
-
-    // Assign URLs for preview and export functionality
-    $this->assign('previewUrl', CRM_Utils_System::url('civicrm/file-analyzer/preview'));
-    $this->assign('exportUrl', CRM_Utils_System::url('civicrm/file-analyzer/export'));
-    $this->assign('ajaxUrl', CRM_Utils_System::url('civicrm/ajax/file-analyzer'));
-
-    // Check if files have export data available
-    $this->assign('exportFormats', ['csv' => 'CSV', 'json' => 'JSON']);
 
     // Load required frontend resources for dashboard functionality
     // Reuse the same CSS and JS files from the main dashboard
