@@ -41,6 +41,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
   public static $customFieldRecords = [];
   public static $tableMapping = [];
+  public static $customTableToCoreTable = [];
 
   /**
    * Main scheduled job entry point for file analysis and cleanup
@@ -75,6 +76,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         // Create scan record
         $scanId = self::createScanRecord($dirType);
         self::$tableMapping = CRM_Fileanalyzer_BAO_FileanalyzerReference::tableMapping();
+        self::$customTableToCoreTable = CRM_Fileanalyzer_BAO_FileanalyzerReference::customTableToCoreTable();
         try {
           // Perform comprehensive file scan
           $scanResult = self::performFileScanDB($dirType, $scanId);
@@ -161,7 +163,10 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
     $scanPath = self::getDirectoryPath($directory_type);
     $scanPath = \CRM_Utils_File::addTrailingSlash($scanPath, '/');
+    CRM_Core_Error::debug_var('File Analyzer: Scanning path', $scanPath);
+    CRM_Core_Error::debug_log_message('File Analyzer: Scan ID ' . $scanId);
     $files = self::scanDirectoryRecursive($scanPath);
+    CRM_Core_Error::debug_log_message('File Analyzer: Found ' . count($files) . ' files');
     $settings = self::getSettings();
 
     $statistics = [
@@ -183,13 +188,21 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     // STEP 1: Build file info array (no database calls yet)
     $fileInfoArray = [];
     $filenames = [];
-
+    CRM_Core_Error::debug_log_message('File Analyzer: Building file stats');
+    $i = $processCount = 0;
+    $fileCount = count($files);
     foreach ($files as $file) {
       $filePath = $scanPath . $file;
 
       if (!is_file($filePath)) {
         continue;
       }
+      if ($i >= 1000) {
+        $i = 0;
+        CRM_Core_Error::debug_log_message("File Analyzer: Stat Processed {$processCount} / {$fileCount} files so far...");
+      }
+      $i++;
+      $processCount++;
 
       $stat = stat($filePath);
       $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
@@ -222,17 +235,29 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     $filesInUse = self::batchCheckFilesInUse($filenames, $directory_type);
 
     // Use database transaction for consistency
-    $transaction = new CRM_Core_Transaction();
-
+    CRM_Core_Error::debug_log_message('File Analyzer:  looping files for db entry');
+    $fileCount = 0;
+    $resetCounter = 0;
+    $totalFilesToProcess = count($fileInfoArray);
     try {
       foreach ($fileInfoArray as $fileData) {
+        if ($resetCounter >= 1000) {
+          $resetCounter = 0;
+          CRM_Core_Error::debug_log_message("File Analyzer: Processed {$fileCount} / {$totalFilesToProcess} files so far...");
+        }
+        $fileCount++;
+        $resetCounter++;
         $extension = $fileData['file_extension'];
         $stat = $fileData['stat'];
         unset($fileData['stat']);
         // Check if file already exists in database
-
-        $existingFile = self::getFileRecordByPath($fileData['filename'], $directory_type);
-
+        if (!empty($fileData['filename'])) {
+          $existingFile = self::getFileRecordByPath($fileData['filename'], $directory_type);
+        }
+        else {
+          $existingFile = [];
+          CRM_Core_Error::debug_var('filename missing', $fileData);
+        }
         // Check if file is in use
         $fileInUse = $filesInUse[$fileData['filename']] ?? [];
         $isAbandoned = !$fileInUse['in_use'];
@@ -313,8 +338,6 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       // Mark files that no longer exist on filesystem as inactive
       self::markMissingFilesInactive($directory_type, $scanPath);
 
-      $transaction->commit();
-
       // STEP 3: Store results in database
       return [
         'total_files' => count($files),
@@ -326,8 +349,15 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       ];
     }
     catch (Exception $e) {
-      $transaction->rollback();
-      throw $e;
+      CRM_Core_Error::debug_log_message('File Analyzer: Error during DB scan: ' . $e->getMessage());
+      return [
+        'total_files' => 0,
+        'active_files' => 0,
+        'abandoned_count' => 0,
+        'total_size' => 0,
+        'abandoned_size' => 0,
+        'statistics' => [],
+      ];
     }
   }
 
@@ -348,10 +378,11 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     }
 
     // Process in batches to avoid query length limits
-    $batchSize = 5; // Adjust based on your MySQL max_allowed_packet
+    $batchSize = 100; // Adjust based on your MySQL max_allowed_packet
     $batches = array_chunk($filenames, $batchSize);
-
+    CRM_Core_Error::debug_log_message('File Analyzer: Performing batch database check for ' . count($filenames) . ' files');
     foreach ($batches as $batchIndex => $batch) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Processing batch " . ($batchIndex + 1) . " of " . count($batches));
       if ($directory_type == self::DIRECTORY_CUSTOM) {
         $filesInUse = array_merge($filesInUse, self::batchCheckCustomFiles($batch));
       }
@@ -423,11 +454,21 @@ class CRM_Fileanalyzer_API_FileAnalysis {
             'in_use' => 1,
             'file_id' => $entityResult->file_id,
           ];
+          $entityTable = $entityResult->entity_table;
+          $reference_type = self::REFERENCE_FILE_RECORD;
+          $fieldName = 'Attachment';
+          // Map custom tables to core tables if applicable
+          if (array_key_exists($entityTable, self::$customTableToCoreTable)) {
+            $entityTable = self::$customTableToCoreTable[$entityResult->entity_table];
+            $reference_type = self::REFERENCE_CUSTOM_FIELD;
+            $fieldName = self::$customFieldRecords[$entityResult->file_id]['field_label'];
+          }
           $filesInUse[$entityResult->filename]['references'][] = [
-            'reference_type' => self::REFERENCE_FILE_RECORD,
-            'entity_table' => self::$tableMapping[$entityResult->entity_table],
+            'reference_type' => $reference_type,
+            'entity_table' => $entityTable,
+            'entity_table_original' => $entityResult->entity_table,
             'entity_id' => $entityResult->entity_id,
-            'field_name' => 'Attachment',
+            'field_name' => $fieldName,
             'details' => json_encode([
               'linked_through_file_id' => $entityResult->file_id,
             ]),
@@ -617,7 +658,6 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     catch (Exception $e) {
       CRM_Core_Error::debug_log_message("File Analyzer: Error in batch contribute page check: " . $e->getMessage());
     }
-
 
 
     // Check message templates
@@ -982,25 +1022,32 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @return array|null File record
    */
   private static function getFileRecordByPath($filename, $directoryType) {
-    $query = "
+    try {
+      $query = "
       SELECT *
       FROM civicrm_file_analyzer
       WHERE filename = %1 AND directory_type = %2
       LIMIT 1
     ";
-    $params = [
-      1 => [$filename, 'String'],
-      2 => [$directoryType, 'String'],
-    ];
-    $dao = CRM_Core_DAO::executeQuery($query, $params);
-    if ($dao->fetch()) {
-      return [
-        'id' => $dao->id,
-        'file_id' => $dao->file_id,
-        'filename' => $dao->filename,
-        'file_path' => $dao->file_path,
-        'is_abandoned' => $dao->is_abandoned,
+      $params = [
+        1 => [$filename, 'String'],
+        2 => [$directoryType, 'String'],
       ];
+      $dao = CRM_Core_DAO::executeQuery($query, $params);
+      if ($dao->fetch()) {
+        return [
+          'id' => $dao->id,
+          'file_id' => $dao->file_id,
+          'filename' => $dao->filename,
+          'file_path' => $dao->file_path,
+          'is_abandoned' => $dao->is_abandoned,
+        ];
+      }
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message(
+        "File Analyzer: Failed to get existing record of file {$filename}: " . $e->getMessage()
+      );
     }
 
     return NULL;
@@ -1684,7 +1731,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       $customFields = civicrm_api3('CustomField', 'get', [
         'sequential' => 1,
         'data_type' => 'File',
-        'is_active' => 1,
+        // 'is_active' => 1,
         'options' => ['limit' => 0],
         'api.CustomGroup.get' => [
           'id' => '$value.custom_group_id',
@@ -1769,7 +1816,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @param string $extends The extends value from custom group
    * @return string The actual database table name
    */
-  private static function mapExtendsToEntityTable($extends) {
+  public static function mapExtendsToEntityTable($extends) {
     $mapping = [
       'Contact' => 'civicrm_contact',
       'Individual' => 'civicrm_contact',

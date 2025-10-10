@@ -254,4 +254,31 @@ class CRM_Fileanalyzer_BAO_FileanalyzerReference extends CRM_Fileanalyzer_DAO_Fi
     return $mapping;
   }
 
+  /**
+   * Get mapping of custom tables to core CiviCRM tables
+   *
+   * @return array Associative array with custom_table => core_table mapping
+   */
+  public static function customTableToCoreTable() {
+    $query = "SELECT extends AS entity_type, table_name AS custom_tables FROM civicrm_custom_group";
+
+    // Execute query (adjust based on your DB connection method)
+    $dao = CRM_Core_DAO::executeQuery($query);
+
+    $mapping = [];
+
+    while ($dao->fetch()) {
+      $entityType = $dao->entity_type;
+      $customTable = $dao->custom_tables;
+
+      // Convert entity type to core table name
+      $coreTable = CRM_Fileanalyzer_API_FileAnalysis::mapExtendsToEntityTable($entityType);
+
+      // Store mapping
+      $mapping[$customTable] = $coreTable;
+    }
+
+    return $mapping;
+  }
+
 }
