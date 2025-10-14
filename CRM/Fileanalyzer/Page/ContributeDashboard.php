@@ -34,7 +34,7 @@ class CRM_Fileanalyzer_Page_ContributeDashboard extends CRM_Core_Page {
   public function run() {
     // Set the browser title and page heading
     CRM_Utils_System::setTitle(ts('Public Images Analyzer Dashboard'));
-
+    $result = CRM_Fileanalyzer_API_FileAnalysis::scheduledScan(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE);
     // Retrieve the latest scan results for public directory
     $scanResults = CRM_Fileanalyzer_API_FileAnalysis::getLatestScanResults(CRM_Fileanalyzer_API_FileAnalysis::DIRECTORY_CONTRIBUTE);
 

@@ -304,3 +304,15 @@
     gap: 1rem;
   }
 }
+
+.size-distribution-chart {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.size-distribution-chart .chart-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}

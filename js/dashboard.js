@@ -1,4 +1,4 @@
-/* js/dashboard.js - Enhanced Dashboard JavaScript with Preview and Export Support */
+/* js/dashboard.js - Enhanced Dashboard JavaScript with Statistics Toggle */
 
 (function($) {
   'use strict';
@@ -17,6 +17,7 @@
     initializeCharts: function() {
       this.initTimelineChart();
       this.initFileTypeChart();
+      this.initSizeDistributionChart();
     },
 
     initTimelineChart: function() {
@@ -29,9 +30,6 @@
       var labels = Object.keys(monthlyData).sort();
       var sizeData = labels.map(function(month) {
         return (monthlyData[month].size / (1024 * 1024)).toFixed(2);
-      });
-      var countData = labels.map(function(month) {
-        return monthlyData[month].count;
       });
 
       var primaryColor = FileAnalyzerData.directoryType === 'contribute' ? '#764ba2' : '#667eea';
@@ -79,7 +77,11 @@
                 },
                 label: function(context) {
                   var month = context.label;
-                  var data = monthlyData[month];
+                  var showAbandoned = document.getElementById('showAbandonedOnly') && document.getElementById('showAbandonedOnly').checked;
+                  var fileData = FileAnalyzerData.fileData || {};
+                  var data = showAbandoned && fileData.abandoned && fileData.abandoned.monthly ?
+                    fileData.abandoned.monthly[month] : fileData.monthly[month];
+                  if (!data) return '';
                   return [
                     'Size: ' + context.parsed.y + ' MB',
                     'Files: ' + data.count
@@ -207,6 +209,104 @@
       });
     },
 
+    initSizeDistributionChart: function() {
+      var ctx = document.getElementById('sizeDistributionChart');
+      if (!ctx) return;
+
+      var fileData = FileAnalyzerData.fileData || {};
+      var sizeData = fileData.size_distribution || {};
+
+      var labels = Object.keys(sizeData);
+      var counts = labels.map(function(range) {
+        return sizeData[range].count;
+      });
+      var sizes = labels.map(function(range) {
+        return sizeData[range].size;
+      });
+
+      var colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#06b6d4', '#84cc16'];
+
+      this.charts.sizeDistribution = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: counts,
+            backgroundColor: colors.slice(0, labels.length),
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            hoverBorderWidth: 3,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 15,
+                usePointStyle: true,
+                font: {
+                  size: 11
+                },
+                generateLabels: function(chart) {
+                  var data = chart.data;
+                  return data.labels.map(function(label, i) {
+                    var range = labels[i];
+                    var count = counts[i];
+                    var size = FileAnalyzer.formatBytes(sizes[i]);
+                    return {
+                      text: label + ' (' + count + ' files, ' + size + ')',
+                      fillStyle: colors[i],
+                      strokeStyle: colors[i],
+                      pointStyle: 'circle'
+                    };
+                  });
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleColor: '#ffffff',
+              bodyColor: '#ffffff',
+              borderColor: '#10b981',
+              borderWidth: 1,
+              cornerRadius: 6,
+              displayColors: true,
+              callbacks: {
+                label: function(context) {
+                  var range = labels[context.dataIndex];
+                  var count = counts[context.dataIndex];
+                  var size = FileAnalyzer.formatBytes(sizes[context.dataIndex]);
+                  var percentage = ((count / counts.reduce(function(a, b) { return a + b; }, 0)) * 100).toFixed(1);
+                  return [
+                    range + ': ' + count + ' files',
+                    'Total Size: ' + size,
+                    'Percentage: ' + percentage + '%'
+                  ];
+                }
+              }
+            },
+            title: {
+              display: true,
+              text: 'Files by Size Range',
+              font: {
+                size: 14,
+                weight: 'bold'
+              },
+              color: '#1e293b',
+              padding: {
+                top: 10,
+                bottom: 10
+              }
+            }
+          }
+        }
+      });
+    },
+
     bindEvents: function() {
       var self = this;
 
@@ -219,6 +319,13 @@
       $('#timelineMetric').on('change', function() {
         self.updateTimelineChart($(this).val());
       });
+
+      // Abandoned checkbox listener
+      $('#showAbandonedOnly').on('change', function() {
+        self.updateStatistics();
+        self.updateTimelineChart($('#timelineMetric').val());
+        self.updateSizeDistributionChart();
+      });
     },
 
     formatFileSizes: function() {
@@ -230,24 +337,54 @@
 
     updateStatistics: function() {
       var stats = FileAnalyzerData.directoryStats || {};
-      console.log(stats);
-      var abandonedFiles = FileAnalyzerData.abandonedFiles || [];
+      var showAbandoned = $('#showAbandonedOnly').is(':checked');
 
-      var totalAbandonedSize = abandonedFiles.reduce(function(sum, file) {
-        return sum + file.size;
-      }, 0);
+      if (showAbandoned) {
+        // Show only abandoned statistics
+        var fileData = FileAnalyzerData.fileData || {};
+        var abandonedMonthly = fileData.abandoned && fileData.abandoned.monthly ? fileData.abandoned.monthly : {};
 
-      $('#totalFiles').text(this.formatNumber(stats.totalFiles || 0));
-      $('#totalSize').text(this.formatBytes(stats.totalSize || 0));
-      $('#abandonedCount').text(this.formatNumber(stats.abandonedFiles || 0));
-      $('#wastedSpace').text(this.formatBytes(stats.abandonedSize || 0));
+        // Calculate totals from abandoned data
+        var totalAbandonedFiles = 0;
+        var totalAbandonedSize = 0;
+
+        // Sum up from monthly data
+        Object.keys(abandonedMonthly).forEach(function(month) {
+          totalAbandonedFiles += abandonedMonthly[month].count || 0;
+          totalAbandonedSize += abandonedMonthly[month].size || 0;
+        });
+
+        $('#totalFiles').text(this.formatNumber(totalAbandonedFiles));
+        $('#totalSize').text(this.formatBytes(totalAbandonedSize));
+        $('#abandonedCount').text(this.formatNumber(totalAbandonedFiles));
+        $('#wastedSpace').text(this.formatBytes(totalAbandonedSize));
+
+        // Update labels to indicate abandoned view
+        $('.stat-card:first-child .stat-label').text('Abandoned Files');
+        $('.stat-card:nth-child(2) .stat-label').text('Abandoned Size');
+      } else {
+        // Show all statistics
+        $('#totalFiles').text(this.formatNumber(stats.totalFiles || 0));
+        $('#totalSize').text(this.formatBytes(stats.totalSize || 0));
+        $('#abandonedCount').text(this.formatNumber(stats.abandonedFiles || 0));
+        $('#wastedSpace').text(this.formatBytes(stats.abandonedSize || 0));
+
+        // Restore original labels
+        $('.stat-card:first-child .stat-label').text('Total Files');
+        $('.stat-card:nth-child(2) .stat-label').text('Total Size');
+      }
     },
 
     updateTimelineChart: function(metric) {
       if (!this.charts.timeline) return;
 
       var fileData = FileAnalyzerData.fileData || {};
-      var monthlyData = fileData.monthly || {};
+      var showAbandoned = $('#showAbandonedOnly').is(':checked');
+
+      // Use abandoned data if checkbox is checked, otherwise use all data
+      var monthlyData = showAbandoned && fileData.abandoned && fileData.abandoned.monthly ?
+        fileData.abandoned.monthly : fileData.monthly || {};
+
       var labels = Object.keys(monthlyData).sort();
 
       var data, label, color;
@@ -255,18 +392,19 @@
 
       if (metric === 'count') {
         data = labels.map(function(month) {
-          return monthlyData[month].count;
+          return monthlyData[month] ? monthlyData[month].count : 0;
         });
-        label = 'File Count';
+        label = showAbandoned ? 'Abandoned File Count' : 'File Count';
         color = '#10b981';
       } else {
         data = labels.map(function(month) {
-          return (monthlyData[month].size / (1024 * 1024)).toFixed(2);
+          return monthlyData[month] ? (monthlyData[month].size / (1024 * 1024)).toFixed(2) : 0;
         });
-        label = 'Storage Size (MB)';
+        label = showAbandoned ? 'Abandoned Storage Size (MB)' : 'Storage Size (MB)';
         color = primaryColor;
       }
 
+      this.charts.timeline.data.labels = labels;
       this.charts.timeline.data.datasets[0].data = data;
       this.charts.timeline.data.datasets[0].label = label;
       this.charts.timeline.data.datasets[0].borderColor = color;
@@ -278,6 +416,104 @@
       };
 
       this.charts.timeline.update();
+
+      // Also update the file type chart and size distribution chart
+      this.updateFileTypeChart();
+      this.updateSizeDistributionChart();
+    },
+
+    updateFileTypeChart: function() {
+      if (!this.charts.fileType) return;
+
+      var fileData = FileAnalyzerData.fileData || {};
+      var showAbandoned = $('#showAbandonedOnly').is(':checked');
+
+      // Use abandoned data if checkbox is checked, otherwise use all data
+      var typeData = showAbandoned && fileData.abandoned && fileData.abandoned.fileTypes ?
+        fileData.abandoned.fileTypes : fileData.fileTypes || {};
+
+      var labels = Object.keys(typeData);
+      var counts = labels.map(function(type) {
+        return typeData[type].count;
+      });
+      var sizes = labels.map(function(type) {
+        return typeData[type].size;
+      });
+
+      var colors = FileAnalyzerData.directoryType === 'contribute'
+        ? ['#764ba2', '#667eea', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#fa709a', '#ffecd2']
+        : ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b', '#06b6d4', '#84cc16'];
+
+      this.charts.fileType.data.labels = labels.map(function(l) { return l.toUpperCase(); });
+      this.charts.fileType.data.datasets[0].data = counts;
+      this.charts.fileType.data.datasets[0].backgroundColor = colors.slice(0, labels.length);
+
+      // Update legend
+      var self = this;
+      this.charts.fileType.options.plugins.legend.labels.generateLabels = function(chart) {
+        var data = chart.data;
+        return data.labels.map(function(label, i) {
+          var type = labels[i];
+          var count = counts[i];
+          var size = self.formatBytes(sizes[i]);
+          return {
+            text: label + ' (' + count + ' files, ' + size + ')',
+            fillStyle: colors[i],
+            strokeStyle: colors[i],
+            pointStyle: 'circle'
+          };
+        });
+      };
+
+      this.charts.fileType.update();
+    },
+
+    updateSizeDistributionChart: function() {
+      if (!this.charts.sizeDistribution) return;
+
+      var fileData = FileAnalyzerData.fileData || {};
+      var showAbandoned = $('#showAbandonedOnly').is(':checked');
+
+      // Use abandoned data if checkbox is checked, otherwise use all data
+      var sizeData = showAbandoned && fileData.abandoned && fileData.abandoned.size_distribution ?
+        fileData.abandoned.size_distribution : fileData.size_distribution || {};
+
+      var labels = Object.keys(sizeData);
+      var counts = labels.map(function(range) {
+        return sizeData[range].count;
+      });
+      var sizes = labels.map(function(range) {
+        return sizeData[range].size;
+      });
+
+      var colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#06b6d4', '#84cc16'];
+
+      this.charts.sizeDistribution.data.labels = labels;
+      this.charts.sizeDistribution.data.datasets[0].data = counts;
+      this.charts.sizeDistribution.data.datasets[0].backgroundColor = colors.slice(0, labels.length);
+
+      // Update legend
+      var self = this;
+      this.charts.sizeDistribution.options.plugins.legend.labels.generateLabels = function(chart) {
+        var data = chart.data;
+        return data.labels.map(function(label, i) {
+          var range = labels[i];
+          var count = counts[i];
+          var size = self.formatBytes(sizes[i]);
+          return {
+            text: label + ' (' + count + ' files, ' + size + ')',
+            fillStyle: colors[i],
+            strokeStyle: colors[i],
+            pointStyle: 'circle'
+          };
+        });
+      };
+
+      // Update title based on abandoned state
+      var titleText = showAbandoned ? 'Abandoned Files by Size Range' : 'Files by Size Range';
+      this.charts.sizeDistribution.options.plugins.title.text = titleText;
+
+      this.charts.sizeDistribution.update();
     },
 
     refreshData: function() {
@@ -286,7 +522,6 @@
 
       $btn.prop('disabled', true).html('<i class="crm-i fa-spinner fa-spin"></i> Refreshing...');
 
-      // Simulate data refresh - in real implementation, this would make an AJAX call
       setTimeout(function() {
         location.reload();
       }, 1000);

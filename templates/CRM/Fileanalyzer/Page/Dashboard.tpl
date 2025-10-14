@@ -112,6 +112,19 @@
             <canvas id="fileTypeChart" width="400" height="400"></canvas>
           </div>
         </div>
+
+        {* Size Distribution Chart *}
+        <div class="charts-container" style="margin-top: 2rem;">
+          <div class="chart-panel size-distribution-chart">
+            <div class="chart-header">
+              <h3>{ts}Files by Size Range{/ts}</h3>
+              <div class="chart-legend" id="sizeDistributionLegend"></div>
+            </div>
+            <div class="chart-body">
+              <canvas id="sizeDistributionChart" width="600" height="400"></canvas>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
