@@ -89,7 +89,7 @@
             <div class="chart-controls">
               <div>
               <label>
-                <input type="checkbox" id="showAbandonedOnly" onchange="updateTimelineChart()" checked>{ts}Show Only Abandoned Files{/ts}
+                <input type="checkbox" id="showAbandonedOnly" onchange="updateTimelineChart()">{ts}Show Only Abandoned Files{/ts}
               </label>
               </div>
               <select id="timelineMetric" onchange="updateTimelineChart()">
