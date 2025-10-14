@@ -28,11 +28,12 @@ return [
             'scan_status:label',
             'is_contact_file',
             'contact_id',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table:label',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.field_name',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_id',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.reference_type:label',
             'created_date',
+            'entity_table:label',
+            'field_name',
+            'entity_id',
+            'is_table_reference',
+            'reference_type:label',
           ],
           'orderBy' => [],
           'where' => [
@@ -48,17 +49,7 @@ return [
             ],
           ],
           'groupBy' => [],
-          'join' => [
-            [
-              'FileanalyzerReference AS Fileanalyzer_FileanalyzerReference_file_analyzer_id_01',
-              'LEFT',
-              [
-                'id',
-                '=',
-                'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.file_analyzer_id',
-              ],
-            ],
-          ],
+          'join' => [],
           'having' => [],
         ],
       ],
@@ -135,12 +126,12 @@ return [
             ],
             [
               'type' => 'html',
-              'key' => 'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table:label',
-              'label' => E::ts('Entity Info'),
+              'key' => 'entity_table:label',
+              'label' => E::ts('Entity Table'),
               'sortable' => TRUE,
-              'rewrite' => '<span class="badge badge-dark">[Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table:label]</span>
-<span class="badge badge-success">[Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.reference_type:label]</span>
-<span class="badge badge-danger">[Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.field_name]</span>',
+              'rewrite' => '<span class="badge badge-dark">[entity_table:label]</span>
+<span class="badge badge-success">[reference_type:label]</span>
+<span class="badge badge-danger">[field_name]</span>',
             ],
             [
               'links' => [
@@ -207,11 +198,11 @@ return [
             'scan_status:label',
             'is_contact_file',
             'contact_id',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table:label',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.field_name',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_id',
-            'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.reference_type:label',
             'created_date',
+            'entity_table:label',
+            'entity_id',
+            'field_name',
+            'reference_type:label',
           ],
           'orderBy' => [],
           'where' => [
@@ -227,17 +218,7 @@ return [
             ],
           ],
           'groupBy' => [],
-          'join' => [
-            [
-              'FileanalyzerReference AS Fileanalyzer_FileanalyzerReference_file_analyzer_id_01',
-              'LEFT',
-              [
-                'id',
-                '=',
-                'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.file_analyzer_id',
-              ],
-            ],
-          ],
+          'join' => [],
           'having' => [],
         ],
       ],
@@ -302,10 +283,10 @@ return [
             ],
             [
               'type' => 'html',
-              'key' => 'Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table:label',
+              'key' => 'entity_table:label',
               'label' => E::ts('Entity Info'),
               'sortable' => TRUE,
-              'rewrite' => "{capture assign=entity_id}{\"[Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_id]\"}{/capture}\n\n{if \$entity_id}\t\n{capture assign=entity_table}{\"[Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table:label]\"}{/capture}\n\n{if \$entity_table eq 'Contribution Page'}\n  {capture assign=crmURL}{crmURL p='civicrm/admin/contribute/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Event'}\n  {capture assign=crmURL}{crmURL p='civicrm/event/manage/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Message Template'}\n  {capture assign=crmURL}{crmURL p='civicrm/admin/messageTemplates/add' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{/if}\n\n<span class=\"badge badge-success\"><a target=\"_blank\" href=\"{\$crmURL}\">[Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table:label]</a></span>\n<span class=\"badge badge-danger\">[Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.field_name]</span>\n{/if}",
+              'rewrite' => "{capture assign=entity_id}{\"[entity_id]\"}{/capture}\n\n{if \$entity_id}\t\n{capture assign=entity_table}{\"[entity_table:label]\"}{/capture}\n\n{if \$entity_table eq 'Contribution Page'}\n  {capture assign=crmURL}{crmURL p='civicrm/admin/contribute/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Event'}\n  {capture assign=crmURL}{crmURL p='civicrm/event/manage/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Message Template'}\n  {capture assign=crmURL}{crmURL p='civicrm/admin/messageTemplates/add' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{/if}\n\n<span class=\"badge badge-success\"><a target=\"_blank\" href=\"{\$crmURL}\">[entity_table:label]</a></span>\n<span class=\"badge badge-danger\">[field_name]</span>\n{/if}",
             ],
             [
               'links' => [

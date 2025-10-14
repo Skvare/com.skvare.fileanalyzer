@@ -25,7 +25,7 @@
   "email_confirmation_template_id": null,
   "autosave_draft": false,
   "navigation": null,
-  "modified_date": "2025-10-09 19:08:20",
+  "modified_date": "2025-10-14 15:26:24",
   "confirmation_type": "redirect_to_url",
   "confirmation_message": null,
   "layout": [
@@ -41,7 +41,7 @@
           "class": "af-markup",
           "#children": [
             {
-              "#text": "\n    \n    "
+              "#text": "\n    \n    \n    \n        "
             },
             {
               "#tag": "p",
@@ -64,7 +64,7 @@
               ]
             },
             {
-              "#text": "\n\n  \n  "
+              "#text": "\n    \n  \n  \n  "
             }
           ]
         },
@@ -87,45 +87,11 @@
             },
             {
               "#tag": "af-field",
-              "name": "Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.reference_type",
+              "name": "reference_type",
               "defn": {
                 "input_attrs": {
                   "multiple": true
-                },
-                "options": [
-                  {
-                    "id": "file_record",
-                    "label": "Attachment Record"
-                  },
-                  {
-                    "id": "contact_image",
-                    "label": "Contact Image"
-                  },
-                  {
-                    "id": "contribution_page",
-                    "label": "Contribution Page"
-                  },
-                  {
-                    "id": "custom_field",
-                    "label": "Custom Field"
-                  },
-                  {
-                    "id": "activity_attachment",
-                    "label": "Activity Attachment"
-                  },
-                  {
-                    "id": "case_attachment",
-                    "label": "Case Attachment"
-                  },
-                  {
-                    "id": "mailing_attachment",
-                    "label": "Mailing Attachment"
-                  },
-                  {
-                    "id": "grant_attachment",
-                    "label": "Grant Attachment"
-                  }
-                ]
+                }
               }
             },
             {
@@ -146,7 +112,7 @@
             },
             {
               "#tag": "af-field",
-              "name": "Fileanalyzer_FileanalyzerReference_file_analyzer_id_01.entity_table",
+              "name": "entity_table",
               "defn": {
                 "input_attrs": {
                   "multiple": true
@@ -232,7 +198,19 @@
               "#tag": "af-field",
               "name": "is_abandoned",
               "defn": {
-                "input_type": "Radio"
+                "input_type": "Radio",
+                "help_pre": "This status means the item is not linked to any record in the database."
+              }
+            },
+            {
+              "#text": "\n    "
+            },
+            {
+              "#tag": "af-field",
+              "name": "is_table_reference",
+              "defn": {
+                "input_type": "Radio",
+                "help_pre": "\"Partially abandoned\" indicates the file exists in the system but isn’t linked to any entity or contact image."
               }
             },
             {

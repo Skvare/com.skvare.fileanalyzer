@@ -394,7 +394,13 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         // Link to civicrm_file if found
         if ($fileInUse['file_id']) {
           $fileData['file_id'] = $fileInUse['file_id'];
+        }
+
+        if (!empty($fileInUse['is_table_reference'])) {
           $fileData['is_table_reference'] = 1;
+        }
+        else {
+          $fileData['is_table_reference'] = 0;
         }
 
         if (!empty($fileInUse['references'])) {
@@ -495,6 +501,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         'in_use' => FALSE,
         'file_id' => NULL,
         'references' => [],
+        'is_table_reference'=> FALSE,
       ];
     }
 
@@ -512,6 +519,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       while ($result->fetch()) {
         // Prepare lookup array
         $fileInfo[$result->filename] = $result->id;
+        $filesInUse[$result->filename]['is_table_reference'] = 1;
       }
     }
     catch (Exception $e) {
@@ -530,10 +538,12 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       while ($entityResult->fetch()) {
         // if we found a match, mark as in use
         if ($entityResult->filename && array_key_exists($entityResult->filename, $fileInfo)) {
-          $filesInUse[$entityResult->filename] = [
-            'in_use' => 1,
-            'file_id' => $entityResult->file_id,
-          ];
+          $filesInUse[$entityResult->filename]['in_use'] = 1;
+          $filesInUse[$entityResult->filename]['file_id'] = $entityResult->file_id;
+          // if file is linked through civicrm_entity_file, it's not
+          // partial abandoned
+          $filesInUse[$entityResult->filename]['is_table_reference'] = 0;
+
           $entityTable = $entityResult->entity_table;
           $reference_type = self::REFERENCE_FILE_RECORD;
           $fieldName = 'Attachment';
@@ -569,10 +579,12 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       // Check File ID is prsent custom Field records.
       if (array_key_exists($fileID, self::$customFieldRecords)) {
         // if we found a match, mark as in use
-        $filesInUse[$filename] = [
-          'in_use' => 1,
-          'file_id' => $fileID,
-        ];
+        $filesInUse[$filename]['in_use'] = 1;
+        $filesInUse[$filename]['file_id'] = $fileID;
+        // if file is linked through civicrm_entity_file, it's not
+        // partial abandoned
+        $filesInUse[$filename]['is_table_reference'] = FALSE;
+
         $filesInUse[$filename]['references'] = [
           'reference_type' => self::REFERENCE_CUSTOM_FIELD,
           'entity_table' => self::$customFieldRecords[$fileID]['entity_table'],
@@ -604,12 +616,12 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           // 2. In path: /files/civicrm/custom/filename.jpg
           // 3. Direct match
           if (str_contains($imageUrl, $filename)) {
-            $filesInUse[$filename] = [
-              'in_use' => 1,
-              //'file_id' => $fileID,
-              'is_contact_file' => TRUE,
-              'contact_id' => $contactResult->id,
-            ];
+            $filesInUse[$filename]['in_use'] = 1;
+            $filesInUse[$filename]['is_contact_file'] = TRUE;
+            // if file is linked through civicrm_entity_file, it's not
+            // partial abandoned
+            $filesInUse[$filename]['is_table_reference'] = 0;
+
             $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_CONTACT_IMAGE,
               'entity_table' => 'civicrm_contact',
@@ -648,6 +660,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         'in_use' => FALSE,
         'file_id' => NULL,
         'references' => [],
+        'is_table_reference' => FALSE,
       ];
 
       $likeConditions[] = "intro_text LIKE %{$index} OR thankyou_text LIKE %{$index}";
@@ -673,7 +686,11 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           }
           if (str_contains($contributeResult->thankyou_text, $filename)) {
             $foundIn[] = 'thankyou_text';
-            $filesInUse[$filename] = ['in_use' => 1];
+            $filesInUse[$filename]['in_use'] = 1;
+            // if file is linked through civicrm_entity_file, it's not
+            // partial abandoned
+            $filesInUse[$filename]['is_table_reference'] = FALSE;
+
           }
           if (!empty($foundIn)) {
             $filesInUse[$filename]['references'] = [
@@ -723,7 +740,10 @@ class CRM_Fileanalyzer_API_FileAnalysis {
             $foundIn[] = 'thankyou_text';
           }
           if (!empty($foundIn)) {
-            $filesInUse[$filename] = ['in_use' => 1];
+            $filesInUse[$filename]['in_use'] = 1;
+            // if file is linked through civicrm_entity_file, it's not
+            // partial abandoned
+            $filesInUse[$filename]['is_table_reference'] = FALSE;
             $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_EVENT_PAGE,
               'entity_table' => 'civicrm_event',
@@ -756,7 +776,11 @@ class CRM_Fileanalyzer_API_FileAnalysis {
             $foundIn[] = 'msg_html';
           }
           if (!empty($foundIn)) {
-            $filesInUse[$filename]['in_use'] = TRUE;
+            $filesInUse[$filename]['in_use'] = 1;
+            // if file is linked through civicrm_entity_file, it's not
+            // partial abandoned
+            $filesInUse[$filename]['is_table_reference'] = FALSE;
+
             $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_MESSAGE_TEMPLATE,
               'entity_table' => 'civicrm_msg_template',
@@ -1155,7 +1179,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     );
     try {
 
-      CRM_Core_DAO::executeQuery($sql);
+      CRM_Core_DAO::executeQuery($sql, $params);
     }
     catch (Exception $e) {
       CRM_Core_Error::debug_log_message("File Analyzer: Error updating file record ID {$id}: " . $e->getMessage());
