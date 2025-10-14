@@ -18,7 +18,6 @@
 SET FOREIGN_KEY_CHECKS=0;
 
 DROP TABLE IF EXISTS `civicrm_file_analyzer_scan`;
-DROP TABLE IF EXISTS `civicrm_file_analyzer_reference`;
 DROP TABLE IF EXISTS `civicrm_file_analyzer_deleted`;
 DROP TABLE IF EXISTS `civicrm_file_analyzer`;
 
@@ -46,7 +45,8 @@ CREATE TABLE `civicrm_file_analyzer` (
   `file_size` bigint unsigned NOT NULL DEFAULT 0 COMMENT 'File size in bytes',
   `file_extension` varchar(10) COMMENT 'File extension (pdf, jpg, png, etc)',
   `mime_type` varchar(100) COMMENT 'MIME type of the file',
-  `is_abandoned` tinyint NOT NULL DEFAULT 0 COMMENT 'Flag indicating if file is orphaned',
+  `is_abandoned` tinyint DEFAULT 0 COMMENT 'Flag indicating if file is orphaned',
+  `is_table_reference` tinyint DEFAULT 0 COMMENT 'Flag indicating if file is partially orphaned',
   `is_active` tinyint NOT NULL DEFAULT 1 COMMENT 'Flag indicating if file still exists on filesystem',
   `created_date` datetime COMMENT 'File creation date from filesystem',
   `modified_date` datetime COMMENT 'File last modification date',
@@ -54,6 +54,11 @@ CREATE TABLE `civicrm_file_analyzer` (
   `scan_status` varchar(20) DEFAULT "pending" COMMENT 'Status: pending, scanned, deleted, error',
   `is_contact_file` tinyint DEFAULT 0 COMMENT 'Flag indicating if file is belong contact image',
   `contact_id` int unsigned COMMENT 'FK to Contact',
+  `reference_type` varchar(50) COMMENT 'Type: file_record, contact_image, contribution_page, message_template, custom_field',
+  `entity_table` varchar(64) COMMENT 'Related entity table name',
+  `entity_id` int unsigned COMMENT 'Related entity ID',
+  `field_name` varchar(100) COMMENT 'Field name where file is referenced',
+  `reference_details` text COMMENT 'JSON with additional reference metadata',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `UK_file_path_directory`(file_path, directory_type),
   INDEX `index_directory_type`(directory_type),
@@ -61,6 +66,8 @@ CREATE TABLE `civicrm_file_analyzer` (
   INDEX `index_file_extension`(file_extension),
   INDEX `index_scan_status`(scan_status),
   INDEX `index_modified_date`(modified_date),
+  INDEX `index_reference_type`(reference_type),
+  INDEX `index_entity`(entity_table, entity_id),
   CONSTRAINT FK_civicrm_file_analyzer_file_id FOREIGN KEY (`file_id`) REFERENCES `civicrm_file`(`id`) ON DELETE SET NULL,
   CONSTRAINT FK_civicrm_file_analyzer_contact_id FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL)
 ENGINE=InnoDB;
@@ -92,30 +99,6 @@ CREATE TABLE `civicrm_file_analyzer_deleted` (
   INDEX `index_deleted_by`(deleted_by),
   CONSTRAINT FK_civicrm_file_analyzer_deleted_file_analyzer_id FOREIGN KEY (`file_analyzer_id`) REFERENCES `civicrm_file_analyzer`(`id`) ON DELETE SET NULL,
   CONSTRAINT FK_civicrm_file_analyzer_deleted_deleted_by FOREIGN KEY (`deleted_by`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL)
-ENGINE=InnoDB;
-
--- /*******************************************************
--- *
--- * civicrm_file_analyzer_reference
--- *
--- * Tracks where files are referenced/used in the system
--- *
--- *******************************************************/
-CREATE TABLE `civicrm_file_analyzer_reference` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Unique FileanalyzerReference ID',
-  `file_analyzer_id` int unsigned NOT NULL COMMENT 'Reference to civicrm_file_analyzer.id',
-  `reference_type` varchar(50) NOT NULL COMMENT 'Type: file_record, contact_image, contribution_page, message_template, custom_field',
-  `entity_table` varchar(64) COMMENT 'Related entity table name',
-  `entity_id` int unsigned COMMENT 'Related entity ID',
-  `field_name` varchar(100) COMMENT 'Field name where file is referenced',
-  `reference_details` text COMMENT 'JSON with additional reference metadata',
-  `created_date` datetime NOT NULL COMMENT 'When this reference was discovered',
-  `last_verified_date` datetime COMMENT 'Last time reference was verified',
-  `is_active` tinyint NOT NULL DEFAULT 1 COMMENT 'Whether reference is still valid',
-  PRIMARY KEY (`id`),
-  INDEX `index_reference_type`(reference_type),
-  INDEX `index_entity`(entity_table, entity_id),
-  CONSTRAINT FK_civicrm_file_analyzer_reference_file_analyzer_id FOREIGN KEY (`file_analyzer_id`) REFERENCES `civicrm_file_analyzer`(`id`) ON DELETE CASCADE)
 ENGINE=InnoDB;
 
 -- /*******************************************************

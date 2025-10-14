@@ -9,6 +9,59 @@ use CRM_Fileanalyzer_ExtensionUtil as E;
 class CRM_Fileanalyzer_BAO_Fileanalyzer extends CRM_Fileanalyzer_DAO_Fileanalyzer {
 
   /**
+   * Get available reference types
+   *
+   * @return array
+   *   Array of reference types with value => label pairs
+   */
+  public static function getReferenceTypes() {
+    return [
+      'file_record' => ts('Attachment Record'),
+      'contact_image' => ts('Contact Image'),
+      'contribution_page' => ts('Contribution Page'),
+      'message_template' => ts('Message Template'),
+      'custom_field' => ts('Custom Field'),
+      'activity_attachment' => ts('Activity Attachment'),
+      'case_attachment' => ts('Case Attachment'),
+      'mailing_attachment' => ts('Mailing Attachment'),
+      'grant_attachment' => ts('Grant Attachment'),
+    ];
+  }
+
+  public static function getAttachmentEntityTables() {
+    return [
+      'civicrm_activity' => 'activity_attachment',
+      'civicrm_grant' => 'grant_attachment',
+      'civicrm_case' => 'case_attachment',
+      'civicrm_mailing' => 'mailing_attachment',
+    ];
+  }
+
+  public static function tableMapping() {
+    $mapping = [
+      // managed files tables.
+      'civicrm_contact' => 'Contact',
+      'civicrm_activity' => 'Activity',
+      'civicrm_contribution' => 'Contribution',
+      'civicrm_membership' => 'Membership',
+      'civicrm_participant' => 'Participant',
+      'civicrm_event' => 'Event',
+      'civicrm_case' => 'Case',
+      'civicrm_grant' => 'Grant',
+      'civicrm_pledge' => 'Pledge',
+      'civicrm_relationship' => 'Relationship',
+      'civicrm_campaign' => 'Campaign',
+      'civicrm_case' => 'Case',
+      'civicrm_note' => 'Note',
+      'civicrm_pledge' => 'Pledge',
+      // public file table.
+      'civicrm_contribution_page' => 'Contribution Page',
+      'civicrm_msg_template' => 'Message Template',
+    ];
+    return $mapping;
+  }
+
+  /**
    * Get available directory types
    *
    * @return array
@@ -247,6 +300,33 @@ class CRM_Fileanalyzer_BAO_Fileanalyzer extends CRM_Fileanalyzer_DAO_Fileanalyze
 
   public static function deleteFileRecord($fileID) {
     CRM_Core_Error::debug_var('fileID', $fileID);
+  }
+
+  /**
+   * Get mapping of custom tables to core CiviCRM tables
+   *
+   * @return array Associative array with custom_table => core_table mapping
+   */
+  public static function customTableToCoreTable() {
+    $query = "SELECT extends AS entity_type, table_name AS custom_tables FROM civicrm_custom_group";
+
+    // Execute query (adjust based on your DB connection method)
+    $dao = CRM_Core_DAO::executeQuery($query);
+
+    $mapping = [];
+
+    while ($dao->fetch()) {
+      $entityType = $dao->entity_type;
+      $customTable = $dao->custom_tables;
+
+      // Convert entity type to core table name
+      $coreTable = CRM_Fileanalyzer_API_FileAnalysis::mapExtendsToEntityTable($entityType);
+
+      // Store mapping
+      $mapping[$customTable] = $coreTable;
+    }
+
+    return $mapping;
   }
 
 }

@@ -40,6 +40,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
 
   public static $customFieldRecords = [];
+  public static $attachmentEntityTable = [];
   public static $tableMapping = [];
   public static $customTableToCoreTable = [];
 
@@ -75,8 +76,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       foreach ($directoriesToScan as $dirType) {
         // Create scan record
         $scanId = self::createScanRecord($dirType);
-        self::$tableMapping = CRM_Fileanalyzer_BAO_FileanalyzerReference::tableMapping();
-        self::$customTableToCoreTable = CRM_Fileanalyzer_BAO_FileanalyzerReference::customTableToCoreTable();
+        self::$tableMapping = CRM_Fileanalyzer_BAO_Fileanalyzer::tableMapping();
+        self::$customTableToCoreTable = CRM_Fileanalyzer_BAO_Fileanalyzer::customTableToCoreTable();
         try {
           // Perform comprehensive file scan
           $scanResult = self::performFileScanDB($dirType, $scanId);
@@ -166,6 +167,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     CRM_Core_Error::debug_var('File Analyzer: Scanning path', $scanPath);
     CRM_Core_Error::debug_log_message('File Analyzer: Scan ID ' . $scanId);
     $files = self::scanDirectoryRecursive($scanPath);
+    // Limit to first 100,000 files to avoid overload
+    // $files = array_slice($files, 0, 10000);
     CRM_Core_Error::debug_log_message('File Analyzer: Found ' . count($files) . ' files');
     $settings = self::getSettings();
 
@@ -183,6 +186,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     if ($directory_type == self::DIRECTORY_CUSTOM) {
       $fileFields = self::getFileCustomFields();
       self::$customFieldRecords = self::buildFileToEntityMap($fileFields);
+      self::$attachmentEntityTable = CRM_Fileanalyzer_BAO_Fileanalyzer::getAttachmentEntityTables();
     }
 
     // STEP 1: Build file info array (no database calls yet)
@@ -236,6 +240,13 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
     // Use database transaction for consistency
     CRM_Core_Error::debug_log_message('File Analyzer:  looping files for db entry');
+
+
+    // STEP 3: Batch retrieve existing file records (replaces individual getFileRecordByPath calls)
+    $existingFiles = self::getFileRecordsByPathBatch(array_keys($fileInfoArray), $directory_type);
+
+    // STEP 4: Prepare batch data for inserts and updates
+    CRM_Core_Error::debug_log_message('File Analyzer: Preparing batch operations for ' . count($fileInfoArray) . ' files');
     $fileCount = 0;
     $resetCounter = 0;
     $totalFilesToProcess = count($fileInfoArray);
@@ -243,24 +254,22 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       foreach ($fileInfoArray as $fileData) {
         if ($resetCounter >= 1000) {
           $resetCounter = 0;
-          CRM_Core_Error::debug_log_message("File Analyzer: Processed {$fileCount} / {$totalFilesToProcess} files so far...");
+          CRM_Core_Error::debug_log_message("File Analyzer: Prepared {$fileCount} / {$totalFilesToProcess} files so far...");
         }
         $fileCount++;
         $resetCounter++;
+
         $extension = $fileData['file_extension'];
         $stat = $fileData['stat'];
         unset($fileData['stat']);
-        // Check if file already exists in database
-        if (!empty($fileData['filename'])) {
-          $existingFile = self::getFileRecordByPath($fileData['filename'], $directory_type);
-        }
-        else {
-          $existingFile = [];
-          CRM_Core_Error::debug_var('filename missing', $fileData);
-        }
-        // Check if file is in use
+
+        // Get existing file record from batch results
+        $existingFile = $existingFiles[$fileData['filename']] ?? NULL;
+
+        // Check if file is in use from batch results
         $fileInUse = $filesInUse[$fileData['filename']] ?? [];
-        $isAbandoned = !$fileInUse['in_use'];
+        $isAbandoned = !($fileInUse['in_use'] ?? FALSE);
+
 
         // Update statistics
         $totalSize += $fileData['file_size'];
@@ -281,10 +290,29 @@ class CRM_Fileanalyzer_API_FileAnalysis {
             'abandoned_count' => 0,
           ];
         }
+        if (!isset($statistics['abandoned']['monthly'][$month])) {
+          $statistics['abandoned']['monthly'][$month] = [
+            'count' => 0,
+            'size' => 0,
+            'abandoned_count' => 0,
+          ];
+        }
+        if (!isset($statistics['abandoned']['fileTypes'][$extension])) {
+          $statistics['abandoned']['fileTypes'][$extension] = [
+            'count' => 0,
+            'size' => 0,
+            'abandoned_count' => 0,
+          ];
+        }
+
         $statistics['monthly'][$month]['count']++;
-        $statistics['monthly'][$month]['size'] += $fileData['file_size'];;
+        $statistics['monthly'][$month]['size'] += $fileData['file_size'];
         if ($isAbandoned) {
           $statistics['monthly'][$month]['abandoned_count']++;
+
+          $statistics['abandoned']['monthly'][$month]['count']++;
+          $statistics['abandoned']['monthly'][$month]['size'] += $fileData['file_size'];
+          $statistics['abandoned']['monthly'][$month]['abandoned_count']++;
         }
 
         // Build file type statistics
@@ -296,10 +324,62 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           ];
         }
         $statistics['fileTypes'][$extension]['count']++;
-        $statistics['fileTypes'][$extension]['size'] += $fileData['file_size'];;
+        $statistics['fileTypes'][$extension]['size'] += $fileData['file_size'];
         if ($isAbandoned) {
           $statistics['fileTypes'][$extension]['abandoned_count']++;
+
+          $statistics['abandoned']['fileTypes'][$extension]['abandoned_count']++;
+          $statistics['abandoned']['fileTypes'][$extension]['count']++;
+          $statistics['abandoned']['fileTypes'][$extension]['size'] += $fileData['file_size'];
         }
+
+
+        // Build size distribution statistics
+        $sizeInBytes = $fileData['file_size'];
+        $sizeRange = '';
+
+        // Define size ranges (in bytes)
+        if ($sizeInBytes < 102400) { // < 100KB
+          $sizeRange = '0-100KB';
+        } elseif ($sizeInBytes < 512000) { // < 500KB
+          $sizeRange = '100KB-500KB';
+        } elseif ($sizeInBytes < 1048576) { // < 1MB
+          $sizeRange = '500KB-1MB';
+        } elseif ($sizeInBytes < 5242880) { // < 5MB
+          $sizeRange = '1MB-5MB';
+        } elseif ($sizeInBytes < 10485760) { // < 10MB
+          $sizeRange = '5MB-10MB';
+        } elseif ($sizeInBytes < 26214400) { // < 25MB
+          $sizeRange = '10MB-25MB';
+        } elseif ($sizeInBytes < 52428800) { // < 50MB
+          $sizeRange = '25MB-50MB';
+        } else { // >= 50MB
+          $sizeRange = '50MB+';
+        }
+        if (!isset($statistics['size_distribution'][$sizeRange])) {
+          $statistics['size_distribution'][$sizeRange] = [
+            'count' => 0,
+            'size' => 0,
+            'abandoned_count' => 0,
+          ];
+        }
+        if (!isset($statistics['abandoned']['size_distribution'][$sizeRange])) {
+          $statistics['abandoned']['size_distribution'][$sizeRange] = [
+            'count' => 0,
+            'size' => 0,
+            'abandoned_count' => 0,
+          ];
+        }
+
+        $statistics['size_distribution'][$sizeRange]['count']++;
+        $statistics['size_distribution'][$sizeRange]['size'] += $fileData['file_size'];
+        if ($isAbandoned) {
+          $statistics['size_distribution'][$sizeRange]['abandoned_count']++;
+
+          $statistics['abandoned']['size_distribution'][$sizeRange]['count']++;
+          $statistics['abandoned']['size_distribution'][$sizeRange]['size'] += $fileData['file_size'];
+        }
+
 
         // Prepare file record data
         $fileData['is_abandoned'] = $isAbandoned ? 1 : 0;
@@ -314,29 +394,29 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         // Link to civicrm_file if found
         if ($fileInUse['file_id']) {
           $fileData['file_id'] = $fileInUse['file_id'];
+          $fileData['is_table_reference'] = 1;
         }
 
+        if (!empty($fileInUse['references'])) {
+          $fileData['reference_type'] = $fileInUse['references']['reference_type'];
+          $fileData['entity_table'] = CRM_Utils_Array::value('entity_table', $fileInUse['references']);
+          $fileData['entity_id'] = CRM_Utils_Array::value('entity_id', $fileInUse['references']);
+          $fileData['field_name'] = CRM_Utils_Array::value('field_name', $fileInUse['references']);
+          $fileData['reference_details'] = CRM_Utils_Array::value('details', $fileInUse['references']);
+        }
         // Insert or update file record
         if ($existingFile) {
           self::updateFileRecord($existingFile['id'], $fileData);
-          $fileAnalyzerId = $existingFile['id'];
         }
         else {
-          $fileAnalyzerId = self::createFileRecord($fileData);
+          self::createFileRecord($fileData);
         }
 
-        // Store file references
-        if (!empty($fileInUse['references'])) {
-          self::storeFileReferences($fileAnalyzerId, $fileInUse['references']);
-        }
-        else {
-          // Clear old references if file is now abandoned
-          self::clearFileReferences($fileAnalyzerId);
-        }
       }
 
       // Mark files that no longer exist on filesystem as inactive
       self::markMissingFilesInactive($directory_type, $scanPath);
+
 
       // STEP 3: Store results in database
       return [
@@ -463,7 +543,10 @@ class CRM_Fileanalyzer_API_FileAnalysis {
             $reference_type = self::REFERENCE_CUSTOM_FIELD;
             $fieldName = self::$customFieldRecords[$entityResult->file_id]['field_label'];
           }
-          $filesInUse[$entityResult->filename]['references'][] = [
+          if (array_key_exists($entityTable, self::$attachmentEntityTable)) {
+            $reference_type = self::$attachmentEntityTable[$entityTable];
+          }
+          $filesInUse[$entityResult->filename]['references'] = [
             'reference_type' => $reference_type,
             'entity_table' => $entityTable,
             'entity_table_original' => $entityResult->entity_table,
@@ -490,7 +573,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           'in_use' => 1,
           'file_id' => $fileID,
         ];
-        $filesInUse[$filename]['references'][] = [
+        $filesInUse[$filename]['references'] = [
           'reference_type' => self::REFERENCE_CUSTOM_FIELD,
           'entity_table' => self::$customFieldRecords[$fileID]['entity_table'],
           'entity_id' => self::$customFieldRecords[$fileID]['entity_id'],
@@ -527,7 +610,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
               'is_contact_file' => TRUE,
               'contact_id' => $contactResult->id,
             ];
-            $filesInUse[$filename]['references'][] = [
+            $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_CONTACT_IMAGE,
               'entity_table' => 'civicrm_contact',
               'entity_id' => $contactResult->id,
@@ -593,7 +676,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
             $filesInUse[$filename] = ['in_use' => 1];
           }
           if (!empty($foundIn)) {
-            $filesInUse[$filename]['references'][] = [
+            $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_CONTRIBUTION_PAGE,
               'entity_table' => 'civicrm_contribution_page',
               'entity_id' => $contributeResult->id,
@@ -641,7 +724,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           }
           if (!empty($foundIn)) {
             $filesInUse[$filename] = ['in_use' => 1];
-            $filesInUse[$filename]['references'][] = [
+            $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_EVENT_PAGE,
               'entity_table' => 'civicrm_event',
               'entity_id' => $eventResult->id,
@@ -674,7 +757,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           }
           if (!empty($foundIn)) {
             $filesInUse[$filename]['in_use'] = TRUE;
-            $filesInUse[$filename]['references'][] = [
+            $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_MESSAGE_TEMPLATE,
               'entity_table' => 'civicrm_msg_template',
               'entity_id' => $templateResult->id,
@@ -890,62 +973,6 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   }
 
   /**
-   * Store file references in database
-   *
-   * @param int $fileAnalyzerId File analyzer record ID
-   * @param array $references Array of reference data
-   */
-  private static function storeFileReferences($fileAnalyzerId, $references) {
-    // Clear existing references
-    self::clearFileReferences($fileAnalyzerId);
-    // Insert new references
-    foreach ($references as $ref) {
-      $params = [
-        'file_analyzer_id' => $fileAnalyzerId,
-        'reference_type' => $ref['reference_type'],
-        'entity_table' => CRM_Utils_Array::value('entity_table', $ref),
-        'entity_id' => CRM_Utils_Array::value('entity_id', $ref),
-        'field_name' => CRM_Utils_Array::value('field_name', $ref),
-        'reference_details' => CRM_Utils_Array::value('details', $ref),
-        'created_date' => date('Y-m-d H:i:s'),
-        'last_verified_date' => date('Y-m-d H:i:s'),
-        'is_active' => 1,
-      ];
-
-      $sql = CRM_Core_DAO::composeQuery(
-        "INSERT INTO civicrm_file_analyzer_reference 
-        (file_analyzer_id, reference_type, entity_table, entity_id, field_name, 
-         reference_details, created_date, last_verified_date, is_active)
-        VALUES (%1, %2, %3, %4, %5, %6, %7, %8, %9)",
-        [
-          1 => [$params['file_analyzer_id'], 'Integer'],
-          2 => [$params['reference_type'], 'String'],
-          3 => [$params['entity_table'], 'String'],
-          4 => [$params['entity_id'], 'Integer'],
-          5 => [$params['field_name'] ?? '', 'String'],
-          6 => [$params['reference_details'], 'String'],
-          7 => [$params['created_date'], 'String'],
-          8 => [$params['last_verified_date'], 'String'],
-          9 => [$params['is_active'], 'Integer'],
-        ]
-      );
-      CRM_Core_DAO::executeQuery($sql);
-    }
-  }
-
-  /**
-   * Clear file references
-   *
-   * @param int $fileAnalyzerId File analyzer record ID
-   */
-  private static function clearFileReferences($fileAnalyzerId) {
-    CRM_Core_DAO::executeQuery(
-      "DELETE FROM civicrm_file_analyzer_reference WHERE file_analyzer_id = %1",
-      [1 => [$fileAnalyzerId, 'Integer']]
-    );
-  }
-
-  /**
    * Auto-delete abandoned files using database records
    *
    * @param string $cutoffDate Cutoff date
@@ -1015,49 +1042,70 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   }
 
   /**
-   * Get file record by path
+   * NEW METHOD: Batch retrieve file records by filenames
    *
-   * @param string $filename File name
+   * @param array $filenames Array of filenames to retrieve
    * @param string $directoryType Directory type
-   * @return array|null File record
+   * @return array Associative array with filename as key
    */
-  private static function getFileRecordByPath($filename, $directoryType) {
-    try {
-      $query = "
-      SELECT *
-      FROM civicrm_file_analyzer
-      WHERE filename = %1 AND directory_type = %2
-      LIMIT 1
-    ";
-      $params = [
-        1 => [$filename, 'String'],
-        2 => [$directoryType, 'String'],
-      ];
-      $dao = CRM_Core_DAO::executeQuery($query, $params);
-      if ($dao->fetch()) {
-        return [
-          'id' => $dao->id,
-          'file_id' => $dao->file_id,
-          'filename' => $dao->filename,
-          'file_path' => $dao->file_path,
-          'is_abandoned' => $dao->is_abandoned,
-        ];
-      }
-    }
-    catch (Exception $e) {
-      CRM_Core_Error::debug_log_message(
-        "File Analyzer: Failed to get existing record of file {$filename}: " . $e->getMessage()
-      );
+  private static function getFileRecordsByPathBatch($filenames, $directoryType) {
+    $existingFiles = [];
+
+    if (empty($filenames)) {
+      return $existingFiles;
     }
 
-    return NULL;
+    // Process in batches to avoid query length limits
+    $batchSize = 500;
+    $batches = array_chunk($filenames, $batchSize);
+
+    foreach ($batches as $batchIndex => $batch) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Retrieving existing records batch " . ($batchIndex + 1) . " of " . count($batches));
+
+      // Create placeholders for IN clause
+      $placeholders = [];
+      $params = [1 => [$directoryType, 'String']];
+
+      foreach ($batch as $index => $filename) {
+        $paramIndex = $index + 2;
+        $placeholders[] = "%{$paramIndex}";
+        $params[$paramIndex] = [$filename, 'String'];
+      }
+
+      $placeholderString = implode(',', $placeholders);
+
+      try {
+        $query = "
+        SELECT id, file_id, filename, file_path, is_abandoned
+        FROM civicrm_file_analyzer
+        WHERE directory_type = %1
+          AND filename IN ({$placeholderString})
+      ";
+
+        $result = CRM_Core_DAO::executeQuery($query, $params);
+
+        while ($result->fetch()) {
+          $existingFiles[$result->filename] = [
+            'id' => $result->id,
+            'file_id' => $result->file_id,
+            'filename' => $result->filename,
+            'file_path' => $result->file_path,
+            'is_abandoned' => $result->is_abandoned,
+          ];
+        }
+      }
+      catch (Exception $e) {
+        CRM_Core_Error::debug_log_message("File Analyzer: Error in batch file record retrieval: " . $e->getMessage());
+      }
+    }
+
+    return $existingFiles;
   }
 
   /**
    * Create file record in database
    *
    * @param array $data File data
-   * @return int File analyzer ID
    */
   private static function createFileRecord($data) {
     $fields = [];
@@ -1071,15 +1119,18 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       $params[$index] = [$value, self::getFieldType($key)];
       $index++;
     }
-
     $sql = sprintf(
-      "INSERT INTO civicrm_file_analyzer (%s) VALUES (%s)",
+      "INSERT IGNORE INTO civicrm_file_analyzer (%s) VALUES (%s)",
       implode(', ', $fields),
       implode(', ', $values)
     );
 
-    CRM_Core_DAO::executeQuery($sql, $params);
-    return CRM_Core_DAO::singleValueQuery("SELECT LAST_INSERT_ID()");
+    try {
+      CRM_Core_DAO::executeQuery($sql, $params);
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Error creating file record: " . $e->getMessage());
+    }
   }
 
   /**
@@ -1098,13 +1149,17 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       $params[$index] = [$value, self::getFieldType($key)];
       $index++;
     }
-
     $sql = sprintf(
       "UPDATE civicrm_file_analyzer SET %s WHERE id = %%1",
       implode(', ', $sets)
     );
+    try {
 
-    CRM_Core_DAO::executeQuery($sql, $params);
+      CRM_Core_DAO::executeQuery($sql);
+    }
+    catch (Exception $e) {
+      CRM_Core_Error::debug_log_message("File Analyzer: Error updating file record ID {$id}: " . $e->getMessage());
+    }
   }
 
   /**
@@ -1252,7 +1307,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     ];
 
     if (in_array($fieldName, $integerFields)) {
-      return 'Integer';
+      return 'String';
+      //return 'Integer';
     }
 
     return 'String';
@@ -1265,12 +1321,13 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @return array Scan results
    */
   public static function getLatestScanResults($directoryType = NULL) {
-    $whereClause = $directoryType ? "WHERE directory_type = %1" : "";
+    $whereClause = $directoryType ? " AND directory_type = %1 " : "";
     $params = $directoryType ? [1 => [$directoryType, 'String']] : [];
 
     $query = "
       SELECT *
       FROM civicrm_file_analyzer_scan
+      WHERE scan_status = 'completed'
       {$whereClause}
       ORDER BY scan_date DESC
       LIMIT 1
@@ -1409,7 +1466,11 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       'created_date' => $fileDao->created_date,
       'modified_date' => $fileDao->modified_date,
       'last_scanned_date' => $fileDao->last_scanned_date,
-      'references' => [],
+      'reference_type' => $fileDao->reference_type,
+      'entity_table' => $fileDao->entity_table,
+      'entity_id' => $fileDao->entity_id,
+      'field_name' => $fileDao->field_name,
+      'reference_details' => json_decode($fileDao->reference_details, TRUE),
     ];
 
     // Get references

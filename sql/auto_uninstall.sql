@@ -18,7 +18,6 @@
 SET FOREIGN_KEY_CHECKS=0;
 
 DROP TABLE IF EXISTS `civicrm_file_analyzer_scan`;
-DROP TABLE IF EXISTS `civicrm_file_analyzer_reference`;
 DROP TABLE IF EXISTS `civicrm_file_analyzer_deleted`;
 DROP TABLE IF EXISTS `civicrm_file_analyzer`;
 

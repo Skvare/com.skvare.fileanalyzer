@@ -87,6 +87,11 @@
           <div class="chart-header">
             <h3>{ts}File Storage Growth Over Time{/ts}</h3>
             <div class="chart-controls">
+              <div>
+              <label>
+                <input type="checkbox" id="showAbandonedOnly" onchange="updateTimelineChart()" checked>{ts}Show Only Abandoned Files{/ts}
+              </label>
+              </div>
               <select id="timelineMetric" onchange="updateTimelineChart()">
                 <option value="size">{ts}Storage Size{/ts}</option>
                 <option value="count">{ts}File Count{/ts}</option>

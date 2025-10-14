@@ -114,11 +114,21 @@
     <name>is_abandoned</name>
     <type>boolean</type>
     <default>0</default>
-    <required>true</required>
     <comment>Flag indicating if file is orphaned</comment>
     <html>
       <type>CheckBox</type>
       <label>Is Abandoned</label>
+    </html>
+  </field>
+
+  <field>
+    <name>is_table_reference</name>
+    <type>boolean</type>
+    <default>0</default>
+    <comment>Flag indicating if file is partially orphaned</comment>
+    <html>
+      <type>CheckBox</type>
+      <label>Is Abandoned With Partial reference</label>
     </html>
   </field>
 
@@ -202,6 +212,67 @@
     <onDelete>SET NULL</onDelete>
   </foreignKey>
 
+  <field>
+    <name>reference_type</name>
+    <type>varchar</type>
+    <length>50</length>
+    <comment>Type: file_record, contact_image, contribution_page, message_template, custom_field</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_Fileanalyzer::getReferenceTypes</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Reference Type</label>
+    </html>
+  </field>
+
+  <field>
+    <name>entity_table</name>
+    <type>varchar</type>
+    <length>64</length>
+    <comment>Related entity table name</comment>
+    <pseudoconstant>
+      <callback>CRM_Fileanalyzer_BAO_Fileanalyzer::tableMapping</callback>
+    </pseudoconstant>
+    <html>
+      <type>Select</type>
+      <label>Entity Table</label>
+    </html>
+  </field>
+
+  <field>
+    <name>entity_id</name>
+    <type>int unsigned</type>
+    <comment>Related entity ID</comment>
+    <html>
+      <type>Number</type>
+      <label>Entity ID</label>
+    </html>
+  </field>
+
+  <field>
+    <name>field_name</name>
+    <type>varchar</type>
+    <length>100</length>
+    <comment>Field name where file is referenced</comment>
+    <html>
+      <type>Text</type>
+      <label>Field Name</label>
+    </html>
+  </field>
+
+  <field>
+    <name>reference_details</name>
+    <type>text</type>
+    <comment>JSON with additional reference metadata</comment>
+    <html>
+      <type>TextArea</type>
+      <label>Reference Details</label>
+    </html>
+  </field>
+
+
+
   <index>
     <name>UK_file_path_directory</name>
     <fieldName>file_path</fieldName>
@@ -232,6 +303,17 @@
   <index>
     <name>index_modified_date</name>
     <fieldName>modified_date</fieldName>
+  </index>
+
+  <index>
+    <name>index_reference_type</name>
+    <fieldName>reference_type</fieldName>
+  </index>
+
+  <index>
+    <name>index_entity</name>
+    <fieldName>entity_table</fieldName>
+    <fieldName>entity_id</fieldName>
   </index>
 
 </table>
