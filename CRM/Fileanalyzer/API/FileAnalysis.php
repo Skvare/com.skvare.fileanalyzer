@@ -166,7 +166,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     $scanPath = \CRM_Utils_File::addTrailingSlash($scanPath, '/');
     CRM_Core_Error::debug_var('File Analyzer: Scanning path', $scanPath);
     CRM_Core_Error::debug_log_message('File Analyzer: Scan ID ' . $scanId);
-    $files = self::scanDirectoryRecursive($scanPath, $settings['excluded_extensions']);
+    $files = self::scanDirectoryRecursive($scanPath, $settings['excluded_folders']);
     // Limit to first 100,000 files to avoid overload
     // $files = array_slice($files, 0, 10000);
     CRM_Core_Error::debug_log_message('File Analyzer: Found ' . count($files) . ' files');
