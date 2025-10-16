@@ -75,4 +75,16 @@ return [
       'placeholder' => 'thumbnails,static',
     ],
   ],
+  'fileanalyzer_skip_delete_un_abandoned_file' => [
+    'name' => 'fileanalyzer_skip_delete_un_abandoned_file',
+    'type' => 'Boolean',
+    'default' => 1,
+    'add' => '5.0',
+    'title' => ts('Skip Deletion of Non-Abandoned Files'),
+    'description' => ts('Skip deletion of files that are not confirmed as abandoned'),
+    'is_domain' => 1,
+    'is_contact' => 0,
+    'settings_pages' => ['fileanalyzer' => ['weight' => 20]],
+    'html_type' => 'checkbox',
+  ],
 ];

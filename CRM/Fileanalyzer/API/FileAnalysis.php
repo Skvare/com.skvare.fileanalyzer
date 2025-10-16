@@ -222,7 +222,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         'directory_type' => $directory_type,
         'file_size' => $stat['size'],
         'modified_date' => date('Y-m-d H:i:s', $stat['mtime']),
-        'created_date' => date('Y-m-d H:i:s', $stat['ctime']),
+        'created_date' => date('Y-m-d H:i:s', $stat['mtime']),
         'file_extension' => $extension,
         'mime_type' => self::getMimeType($filePath),
         'last_scanned_date' => date('Y-m-d H:i:s'),
@@ -522,6 +522,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         // Prepare lookup array
         $fileInfo[$result->filename] = $result->id;
         $filesInUse[$result->filename]['is_table_reference'] = 1;
+        $filesInUse[$result->filename]['file_id'] = $result->id;
       }
     }
     catch (Exception $e) {
@@ -1499,29 +1500,6 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       'reference_details' => json_decode($fileDao->reference_details, TRUE),
     ];
 
-    // Get references
-    $refQuery = "
-      SELECT *
-      FROM civicrm_file_analyzer_reference
-      WHERE file_analyzer_id = %1
-        AND is_active = 1
-    ";
-    $refParams = [1 => [$fileId, 'Integer']];
-    $refDao = CRM_Core_DAO::executeQuery($refQuery, $refParams);
-
-    while ($refDao->fetch()) {
-      $fileData['references'][] = [
-        'id' => $refDao->id,
-        'reference_type' => $refDao->reference_type,
-        'entity_table' => $refDao->entity_table,
-        'entity_id' => $refDao->entity_id,
-        'field_name' => $refDao->field_name,
-        'details' => json_decode($refDao->reference_details, TRUE),
-        'created_date' => $refDao->created_date,
-        'last_verified_date' => $refDao->last_verified_date,
-      ];
-    }
-
     return $fileData;
   }
 
@@ -1533,7 +1511,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @param string $reason Deletion reason
    * @return bool Success
    */
-  public static function deleteFileById($fileId, $backup = TRUE, $reason = NULL) {
+  public static function deleteFileById($fileId, $backup = FALSE, $reason = NULL) {
     $fileData = self::getFileWithReferences($fileId);
 
     if (!$fileData) {
@@ -1544,7 +1522,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       throw new Exception("Cannot delete file that is still in use");
     }
 
-    $backupPath = NULL;
+    $backupPath = '';
     if ($backup) {
       $backupPath = self::backupFile($fileData['file_path'], $fileData['directory_type']);
     }

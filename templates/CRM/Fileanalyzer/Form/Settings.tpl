@@ -66,6 +66,23 @@
           </div>
           <div class="clear"></div>
         </div>
+
+        <div class="crm-section">
+          <div class="label">{$form.fileanalyzer_skip_delete_un_abandoned_file.label}</div>
+          <div class="content">
+              {$form.fileanalyzer_skip_delete_un_abandoned_file.html}
+            <div class="description">
+                {ts}When enabled, files that are not marked as abandoned will be skipped during deletion operations. This adds an extra layer of safety to prevent accidental removal of active files.{/ts}
+            </div>
+            <div class="warning-box" id="skipDeleteWarning">
+              <i class="crm-i fa-warning"></i>
+              <strong>{ts}Important:{/ts}</strong> {ts}Ensure you understand the implications of this setting. It is recommended to keep this enabled unless you have a specific use case that requires otherwise.{/ts}
+              <br/>
+              <strong>{ts}Currently, we do not allow deleting files that are not marked as abandoned.{/ts}</strong>
+            </div>
+          </div>
+          <div class="clear"></div>
+        </div>
       </fieldset>
 
       {* Auto-Delete Settings *}

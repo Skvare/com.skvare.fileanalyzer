@@ -11,6 +11,7 @@ class CRM_Fileanalyzer_Form_Settings extends CRM_Admin_Form_Setting {
     'fileanalyzer_backup_before_delete' => 'FileAnalyzer Setting',
     'fileanalyzer_excluded_extensions' => 'FileAnalyzer Setting',
     'fileanalyzer_excluded_folders' => 'FileAnalyzer Setting',
+    'fileanalyzer_skip_delete_un_abandoned_file' => 'FileAnalyzer Setting',
   ];
 
   public function preProcess() {
