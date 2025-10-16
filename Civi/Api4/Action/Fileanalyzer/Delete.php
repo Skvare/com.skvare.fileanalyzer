@@ -9,12 +9,12 @@ use Civi\Api4\Fileanalyzer;
 class Delete extends \Civi\Api4\Generic\DAODeleteAction {
 
   /**
-   * @inheritDoc
+   * Delete Fileanalyzer records and their associated physical files.
    */
   public function _run(\Civi\Api4\Generic\Result $result) {
     // First, get the records that will be deleted to retrieve file paths
     $recordsToDelete = Fileanalyzer::get($this->getCheckPermissions())
-      ->setSelect(['id', 'file_path', 'filename', 'file_id']) // Add any field that
+      ->setSelect(['id', 'file_path', 'filename', 'file_id', 'directory_type'])
       // contains the file path
       ->setWhere($this->where)
       ->execute()->getArrayCopy();
@@ -36,6 +36,7 @@ class Delete extends \Civi\Api4\Generic\DAODeleteAction {
   protected function deletePhysicalFile($record) {
     // Adjust this based on where your file path is stored
     $filePath = $record['file_path'] ?? $record['uri'] ?? NULL;
+    $directoryType = $record['directory_type'] ?? NULL;
 
     if (empty($filePath)) {
       return;
@@ -51,6 +52,30 @@ class Delete extends \Civi\Api4\Generic\DAODeleteAction {
     if (file_exists($filePath) && is_file($filePath)) {
       @unlink($filePath);
 
+      // Special handling for contribute directory type
+      if ($directoryType === 'contribute') {
+        // Delete static and thumbnail images
+        $fileInfo = pathinfo($filePath);
+        $baseDir = $fileInfo['dirname'];
+        $fileName = $fileInfo['basename'];
+
+        // Paths for static and thumbnail images
+        $staticPath = $baseDir . '/static/' . $fileName;
+        $thumbnailPath = $baseDir . '/thumbnails/' . $fileName;
+
+        // Delete static image if exists
+        if (file_exists($staticPath) && is_file($staticPath)) {
+          @unlink($staticPath);
+        }
+
+        // Delete thumbnail image if exists
+        if (file_exists($thumbnailPath) && is_file($thumbnailPath)) {
+          @unlink($thumbnailPath);
+        }
+      }
+      else {
+        $this->deleteFileRecord($record);
+      }
       // Optionally log the deletion
       \Civi::log()->info('Deleted file: ' . $filePath);
     }
@@ -72,6 +97,28 @@ class Delete extends \Civi\Api4\Generic\DAODeleteAction {
       return TRUE;
     }
     return FALSE;
+  }
+
+  /**
+   * Delete the associated record from civicrm_files if necessary.
+   *
+   * @param array $record
+   */
+  protected function deleteFileRecord($record) {
+    $fileId = $record['file_id'] ?? NULL;
+
+    if ($fileId) {
+      try {
+        // Use CiviCRM's API to delete the file record if it exists
+        \CRM_Core_DAO::executeQuery('DELETE FROM civicrm_files WHERE id = %1', [
+          1 => [$fileId, 'Integer']
+        ]);
+      }
+      catch (\Exception $e) {
+        // Log any errors during file record deletion
+        \Civi::log()->error('Error deleting file record: ' . $e->getMessage());
+      }
+    }
   }
 
 }

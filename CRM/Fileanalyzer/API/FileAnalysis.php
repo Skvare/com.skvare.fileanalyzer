@@ -1674,7 +1674,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   /**
    * Scan directory recursively
    */
-  private static function scanDirectoryRecursive($dir) {
+  private static function scanDirectoryRecursive($dir, $skipDirs = []) {
     $files = [];
 
     // Validate directory exists before attempting scan
@@ -1685,8 +1685,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     $dir = rtrim($dir, '/');
 
     try {
-      // Define directories to skip during scan
-      $skipDirs = ['vendor', 'node_modules', 'tests', 'file_analyzer_backups'];
+      // Merge user-defined skip directories with defaults
+      $skipDirs = array_merge(['vendor', 'node_modules', 'tests', 'file_analyzer_backups'], $skipDirs);
 
       // Create recursive directory iterator
       $directoryIterator = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
@@ -1801,6 +1801,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       'auto_delete_days' => Civi::settings()->get('fileanalyzer_auto_delete_days') ?: 30,
       'backup_before_delete' => Civi::settings()->get('fileanalyzer_backup_before_delete') ?: TRUE,
       'excluded_extensions' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_extensions') ?: '')),
+      'excluded_folders' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_folders') ?: '')),
     ];
   }
 

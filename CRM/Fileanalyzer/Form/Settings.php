@@ -10,6 +10,7 @@ class CRM_Fileanalyzer_Form_Settings extends CRM_Admin_Form_Setting {
     'fileanalyzer_auto_delete_days' => 'FileAnalyzer Setting',
     'fileanalyzer_backup_before_delete' => 'FileAnalyzer Setting',
     'fileanalyzer_excluded_extensions' => 'FileAnalyzer Setting',
+    'fileanalyzer_excluded_folders' => 'FileAnalyzer Setting',
   ];
 
   public function preProcess() {

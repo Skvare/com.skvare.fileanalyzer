@@ -52,6 +52,20 @@
           </div>
           <div class="clear"></div>
         </div>
+
+        <div class="crm-section">
+          <div class="label">{$form.fileanalyzer_excluded_folders.label}</div>
+          <div class="content">
+              {$form.fileanalyzer_excluded_folders.html|crmAddClass:huge40}
+            <div class="description">
+                {ts}Enter folder names to exclude from analysis, separated by commas. Any files within these directories will be ignored during scans and cleanup operations.{/ts}
+            </div>
+            <div class="example">
+              <strong>{ts}Recommended exclusions:{/ts}</strong> tmp,log,cache,bak,temp,htaccess,gitignore
+            </div>
+          </div>
+          <div class="clear"></div>
+        </div>
       </fieldset>
 
       {* Auto-Delete Settings *}
@@ -408,6 +422,7 @@
     CRM.$('#fileanalyzer_auto_delete_days').val('90');
     CRM.$('#fileanalyzer_backup_before_delete').prop('checked', true);
     CRM.$('#fileanalyzer_excluded_extensions').val('tmp,log,cache,htaccess');
+    CRM.$('#fileanalyzer_excluded_folders').val('thumbnails,static');
   }
 
   // Show help overlay

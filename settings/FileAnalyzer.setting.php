@@ -60,4 +60,19 @@ return [
       'placeholder' => 'tmp,log,cache,htaccess',
     ],
   ],
+  'fileanalyzer_excluded_folders' => [
+    'name' => 'fileanalyzer_excluded_folders',
+    'type' => 'String',
+    'default' => 'thumbnails,static',
+    'add' => '5.0',
+    'title' => ts('Excluded Folders'),
+    'description' => ts('Comma-separated list of folder names to exclude from analysis'),
+    'is_domain' => 1,
+    'is_contact' => 0,
+    'settings_pages' => ['fileanalyzer' => ['weight' => 50]],
+    'html_type' => 'text',
+    'html_attributes' => [
+      'placeholder' => 'thumbnails,static',
+    ],
+  ],
 ];
