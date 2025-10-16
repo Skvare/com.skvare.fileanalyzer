@@ -161,16 +161,15 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     CRM_Core_Error::debug_log_message(
       "File Analyzer: Starting DB scan of {$directory_type} directory"
     );
-
+    $settings = self::getSettings();
     $scanPath = self::getDirectoryPath($directory_type);
     $scanPath = \CRM_Utils_File::addTrailingSlash($scanPath, '/');
     CRM_Core_Error::debug_var('File Analyzer: Scanning path', $scanPath);
     CRM_Core_Error::debug_log_message('File Analyzer: Scan ID ' . $scanId);
-    $files = self::scanDirectoryRecursive($scanPath);
+    $files = self::scanDirectoryRecursive($scanPath, $settings['excluded_extensions']);
     // Limit to first 100,000 files to avoid overload
     // $files = array_slice($files, 0, 10000);
     CRM_Core_Error::debug_log_message('File Analyzer: Found ' . count($files) . ' files');
-    $settings = self::getSettings();
 
     $statistics = [
       'fileTypes' => [],
@@ -250,6 +249,9 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     $fileCount = 0;
     $resetCounter = 0;
     $totalFilesToProcess = count($fileInfoArray);
+    $filesInUseCount = count($filesInUse);
+    CRM_Core_Error::debug_log_message("File Analyzer:  Total Files to process {$totalFilesToProcess}.");
+    CRM_Core_Error::debug_log_message("File Analyzer:  Total Files to in use Count {$filesInUseCount}.");
     try {
       foreach ($fileInfoArray as $fileData) {
         if ($resetCounter >= 1000) {
@@ -407,7 +409,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           $fileData['reference_type'] = $fileInUse['references']['reference_type'];
           $fileData['entity_table'] = CRM_Utils_Array::value('entity_table', $fileInUse['references']);
           $fileData['entity_id'] = CRM_Utils_Array::value('entity_id', $fileInUse['references']);
-          $fileData['field_name'] = CRM_Utils_Array::value('field_name', $fileInUse['references']);
+          $fileData['field_name'] = $fileInUse['references']['field_name'] ?? '';
           $fileData['reference_details'] = CRM_Utils_Array::value('details', $fileInUse['references']);
         }
         // Insert or update file record
@@ -419,7 +421,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         }
 
       }
-
+      CRM_Core_Error::debug_log_message('File Analyzer: Completed processing ' . $fileCount . ' files');
       // Mark files that no longer exist on filesystem as inactive
       self::markMissingFilesInactive($directory_type, $scanPath);
 
@@ -1801,7 +1803,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       'auto_delete_days' => Civi::settings()->get('fileanalyzer_auto_delete_days') ?: 30,
       'backup_before_delete' => Civi::settings()->get('fileanalyzer_backup_before_delete') ?: TRUE,
       'excluded_extensions' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_extensions') ?: '')),
-      'excluded_folders' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_folders') ?: '')),
+      'excluded_folders' => array_filter(explode(',', Civi::settings()->get('fileanalyzer_excluded_folders') ?: [])),
     ];
   }
 
