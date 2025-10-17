@@ -34,6 +34,7 @@ return [
             'entity_id',
             'is_table_reference',
             'reference_type:label',
+            'mime_type',
           ],
           'orderBy' => [],
           'where' => [
@@ -84,7 +85,7 @@ return [
               'key' => 'filename',
               'label' => E::ts('Filename'),
               'sortable' => TRUE,
-              'rewrite' => "{capture assign=filename}{\"[filename]\"}{/capture}\n{capture assign=file_id}{\"[file_id]\"}{/capture}\n{capture assign=extension}{\"[file_extension]\"}{/capture}\n\n{if \$extension == 'jpg' || \$extension == 'jpeg'}\n  {assign var=\"mime_type\" value=\"image/jpeg\"}\n{elseif \$extension == 'png'}\n  {assign var=\"mime_type\" value=\"image/png\"}\n{elseif \$extension == 'gif'}\n  {assign var=\"mime_type\" value=\"image/gif\"}\n{elseif \$extension == 'pdf'}\n  {assign var=\"mime_type\" value=\"application/pdf\"}\n{elseif \$extension == 'doc'}\n  {assign var=\"mime_type\" value=\"application/msword\"}\n{elseif \$extension == 'docx'}\n  {assign var=\"mime_type\" value=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\"}\n{elseif \$extension == 'xls'}\n  {assign var=\"mime_type\" value=\"application/vnd.ms-excel\"}\n{elseif \$extension == 'xlsx'}\n  {assign var=\"mime_type\" value=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"}\n{elseif \$extension == 'zip'}\n  {assign var=\"mime_type\" value=\"application/zip\"}\n{else}\n  {assign var=\"mime_type\" value=\"application/octet-stream\"}\n{/if}\n{if \$file_id}\n  <a target=\"_blank\" href=\"[file_id]\">{\$filename|truncate:40:' .... ':true:true}<a/>\n{else}\n  {capture assign=crmURL}{crmURL p='civicrm/file' q=\"reset=1&filename=[filename]&mime-type=`\$mime_type`&reset=1\"}{/capture}\n  <a target=\"_blank\" href=\"{\$crmURL}\">{\$filename|truncate:40:' .... ':true:true}<a/>\n{/if}[file_extension]",
+              'rewrite' => "{capture assign=filename}{\"[filename]\"}{/capture}\n{capture assign=file_id}{\"[file_id]\"}{/capture}\n{capture assign=mime_type}{\"[mime_type]\"}{/capture}\n\n{if \$file_id}\n <a target=\"_blank\" href=\"[file_id]\">{\$filename|truncate:40:' .... ':true:true}<a/>\n{else}\n {capture assign=crmURL}{crmURL p='civicrm/file' q=\"reset=1&filename=[filename]&mime-type=`\$mime_type`&reset=1\"}{/capture}\n <a target=\"_blank\" href=\"{\$crmURL}\">{\$filename|truncate:40:' .... ':true:true}<a/>\n{/if}",
             ],
             [
               'type' => 'html',
@@ -152,6 +153,7 @@ return [
                       TRUE,
                     ],
                   ],
+                  'condition' => [],
                 ],
               ],
               'type' => 'links',
@@ -253,7 +255,7 @@ return [
               'key' => 'filename',
               'label' => E::ts('Filename'),
               'sortable' => TRUE,
-              'rewrite' => "{capture assign=filename}{\"[filename]\"}{/capture}\n<a target=\"_blank\" href=\"/sites/default/files/civicrm/persist/contribute/images/[filename]\">{\$filename|truncate:40:' .... ':true:true}</a>",
+              'rewrite' => "{capture assign=filename}{\"[filename]\"}{/capture}\n{capture assign=file_path}{\"[file_path]\"}{/capture}\n<a target=\"_blank\" href=\"{\$config->imageUploadURL}/{\$file_path|replace:{\$config->imageUploadDir}:''}\">{\$filename|truncate:40:' .... ':true:true}</a",
             ],
             [
               'type' => 'html',
@@ -261,7 +263,7 @@ return [
               'label' => E::ts('File Size'),
               'sortable' => TRUE,
               'rewrite' => '{capture assign=file_size}{"[file_size]"}{/capture}
-{$file_size|filesize}',
+    {$file_size|filesize}',
             ],
             [
               'type' => 'field',
@@ -286,7 +288,7 @@ return [
               'key' => 'entity_table:label',
               'label' => E::ts('Entity Info'),
               'sortable' => TRUE,
-              'rewrite' => "{capture assign=entity_id}{\"[entity_id]\"}{/capture}\n\n{if \$entity_id}\t\n{capture assign=entity_table}{\"[entity_table:label]\"}{/capture}\n\n{if \$entity_table eq 'Contribution Page'}\n  {capture assign=crmURL}{crmURL p='civicrm/admin/contribute/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Event'}\n  {capture assign=crmURL}{crmURL p='civicrm/event/manage/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Message Template'}\n  {capture assign=crmURL}{crmURL p='civicrm/admin/messageTemplates/add' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{/if}\n\n<span class=\"badge badge-success\"><a target=\"_blank\" href=\"{\$crmURL}\">[entity_table:label]</a></span>\n<span class=\"badge badge-danger\">[field_name]</span>\n{/if}",
+              'rewrite' => "{capture assign=entity_id}{\"[entity_id]\"}{/capture}\n\n{if \$entity_id}\t\n{capture assign=entity_table}{\"[entity_table:label]\"}{/capture}\n\n{if \$entity_table eq 'Contribution Page'}\n {capture assign=crmURL}{crmURL p='civicrm/admin/contribute/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Event'}\n {capture assign=crmURL}{crmURL p='civicrm/event/manage/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Message Template'}\n {capture assign=crmURL}{crmURL p='civicrm/admin/messageTemplates/add' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{/if}\n\n<span><a target=\"_blank\" href=\"{\$crmURL}\">[entity_table:label]</a></span>\n<span>[field_name]</span>\n{/if}",
             ],
             [
               'links' => [
@@ -307,6 +309,7 @@ return [
                       TRUE,
                     ],
                   ],
+                  'condition' => [],
                 ],
               ],
               'type' => 'links',

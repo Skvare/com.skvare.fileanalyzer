@@ -1706,7 +1706,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
    * @param $filePath
    * @return string
    */
-  function getMimeTypeByExtension($extension, $filePath = NULL) {
+  private static function getMimeTypeByExtension($extension, $filePath = NULL) {
     $mimeTypes = [
       'bmp' => 'image/bmp',
       'csv' => 'text/csv',

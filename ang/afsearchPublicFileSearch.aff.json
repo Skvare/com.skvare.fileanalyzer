@@ -6,9 +6,8 @@
   "title": "Public File Search",
   "description": null,
   "placement": [],
-  "placement_filters": [],
-  "placement_weight": null,
-  "tags": null,
+  "summary_contact_type": null,
+  "summary_weight": null,
   "icon": "fa-list-alt",
   "server_route": "civicrm/fileanalyzer/public-search",
   "is_public": false,
@@ -23,25 +22,22 @@
   "manual_processing": false,
   "allow_verification_by_email": false,
   "email_confirmation_template_id": null,
-  "autosave_draft": false,
   "navigation": null,
-  "modified_date": "2025-10-14 15:18:23",
-  "confirmation_type": "redirect_to_url",
-  "confirmation_message": null,
+  "modified_date": "2025-10-14 11:06:33",
   "layout": [
     {
       "#tag": "div",
       "af-fieldset": "",
       "#children": [
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "div",
           "class": "af-markup",
           "#children": [
             {
-              "#text": "\n    \n    \n        "
+              "#text": "\n "
             },
             {
               "#tag": "p",
@@ -53,6 +49,7 @@
                       "#tag": "a",
                       "class": "button",
                       "href": "/civicrm/file-analyzer/public-dashboard",
+                      "style": "width: 204px;",
                       "#children": [
                         {
                           "#text": "Back to dashboard"
@@ -64,33 +61,33 @@
               ]
             },
             {
-              "#text": "\n    \n  \n  "
+              "#text": "\n\n "
             }
           ]
         },
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "div",
           "class": "af-container af-layout-inline",
           "#children": [
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
               "name": "filename"
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
               "name": "file_extension"
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
@@ -116,7 +113,7 @@
               }
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
@@ -128,19 +125,19 @@
               }
             },
             {
-              "#text": "\n  "
+              "#text": "\n "
             }
           ]
         },
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "div",
           "class": "af-container af-layout-inline",
           "#children": [
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
@@ -150,12 +147,12 @@
               }
             },
             {
-              "#text": "\n  "
+              "#text": "\n "
             }
           ]
         },
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "crm-search-display-table",

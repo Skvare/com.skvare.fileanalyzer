@@ -6,9 +6,8 @@
   "title": "File Search",
   "description": null,
   "placement": [],
-  "placement_filters": [],
-  "placement_weight": null,
-  "tags": null,
+  "summary_contact_type": null,
+  "summary_weight": null,
   "icon": "fa-list-alt",
   "server_route": "civicrm/fileanalyzer/search",
   "is_public": false,
@@ -23,25 +22,22 @@
   "manual_processing": false,
   "allow_verification_by_email": false,
   "email_confirmation_template_id": null,
-  "autosave_draft": false,
   "navigation": null,
-  "modified_date": "2025-10-14 15:26:24",
-  "confirmation_type": "redirect_to_url",
-  "confirmation_message": null,
+  "modified_date": "2025-10-17 01:49:02",
   "layout": [
     {
       "#tag": "div",
       "af-fieldset": "",
       "#children": [
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "div",
           "class": "af-markup",
           "#children": [
             {
-              "#text": "\n    \n    \n    \n        "
+              "#text": "\n \n \n "
             },
             {
               "#tag": "p",
@@ -53,37 +49,53 @@
                       "#tag": "a",
                       "class": "button",
                       "href": "/civicrm/file-analyzer/dashboard",
+                      "style": "width: 204px;",
                       "#children": [
                         {
                           "#text": "Back to dashboard"
                         }
                       ]
+                    },
+                    {
+                      "#text": "&nbsp;"
                     }
                   ]
                 }
               ]
             },
             {
-              "#text": "\n    \n  \n  \n  "
+              "#text": "\n\n \n \n "
             }
           ]
         },
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "div",
           "class": "af-container af-layout-inline",
           "#children": [
             {
-              "#text": "\n    "
+              "#text": "\n "
+            },
+            {
+              "#tag": "af-field",
+              "name": "filename",
+              "defn": {
+                "required": false,
+                "input_attrs": [],
+                "label": "File Name"
+              }
+            },
+            {
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
               "name": "file_extension"
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
@@ -95,7 +107,7 @@
               }
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
@@ -108,7 +120,7 @@
               }
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
@@ -170,19 +182,19 @@
               }
             },
             {
-              "#text": "\n  "
+              "#text": "\n "
             }
           ]
         },
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "div",
           "class": "af-container af-layout-inline",
           "#children": [
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
@@ -192,34 +204,34 @@
               }
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
               "name": "is_abandoned",
               "defn": {
                 "input_type": "Radio",
-                "help_pre": "This status means the item is not linked to any record in the database."
+                "help_pre": "This status means the item is not linked to any record in the database or just entry in civicrm file table"
               }
             },
             {
-              "#text": "\n    "
+              "#text": "\n "
             },
             {
               "#tag": "af-field",
               "name": "is_table_reference",
               "defn": {
                 "input_type": "Radio",
-                "help_pre": "\"Partially abandoned\" indicates the file exists in the system but isn’t linked to any entity or contact image."
+                "help_pre": "\"Partially abandoned\" indicates the file entry just available in civicrm_file table"
               }
             },
             {
-              "#text": "\n  "
+              "#text": "\n "
             }
           ]
         },
         {
-          "#text": "\n  "
+          "#text": "\n "
         },
         {
           "#tag": "crm-search-display-table",

@@ -1,8 +1,9 @@
 <div af-fieldset="">
     <div class="af-markup">
-    <p><strong><a class="button" href="/civicrm/file-analyzer/dashboard">Back to dashboard</a></strong></p>
+    <p><strong><a class="button" href="/civicrm/file-analyzer/dashboard" style="width: 204px;">Back to dashboard</a>&nbsp;</strong></p>
     </div>
     <div class="af-container af-layout-inline">
+        <af-field name="filename" defn="{required: false, input_attrs: {}, label: 'File Name'}" />
         <af-field name="file_extension" />
         <af-field name="reference_type" defn="{input_attrs: {multiple: true}}" />
         <af-field name="created_date" defn="{input_type: 'Select', search_range: true, input_attrs: {}, label: 'File Upload Date'}" />
@@ -10,8 +11,8 @@
     </div>
     <div class="af-container af-layout-inline">
         <af-field name="is_contact_file" defn="{input_type: 'Radio'}" />
-        <af-field name="is_abandoned" defn="{input_type: 'Radio', help_pre: 'This status means the item is not linked to any record in the database.'}" />
-        <af-field name="is_table_reference" defn="{input_type: 'Radio', help_pre: '&quot;Partially abandoned&quot; indicates the file exists in the system but isn\u2019t linked to any entity or contact image.'}" />
+        <af-field name="is_abandoned" defn="{input_type: 'Radio', help_pre: 'This status means the item is not linked to any record in the database or just entry in civicrm file table'}" />
+        <af-field name="is_table_reference" defn="{input_type: 'Radio', help_pre: '&quot;Partially abandoned&quot; indicates the file entry just available in civicrm_file table'}" />
     </div>
     <crm-search-display-table search-name="Fileanalyzer_Search" display-name="Fileanalyzer_Search_Table_1"></crm-search-display-table>
 </div>
