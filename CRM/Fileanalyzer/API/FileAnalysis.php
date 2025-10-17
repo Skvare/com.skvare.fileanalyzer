@@ -224,7 +224,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         'modified_date' => date('Y-m-d H:i:s', $stat['mtime']),
         'created_date' => date('Y-m-d H:i:s', $stat['mtime']),
         'file_extension' => $extension,
-        'mime_type' => self::getMimeType($filePath),
+        // 'mime_type' => self::getMimeType($filePath),
+        'mime_type' => self::getMimeTypeByExtension($extension, $filePath),
         'last_scanned_date' => date('Y-m-d H:i:s'),
         'scan_status' => self::SCAN_STATUS_SCANNED,
         'stat' => $stat,
@@ -1697,6 +1698,59 @@ class CRM_Fileanalyzer_API_FileAnalysis {
     }
 
     return $files;
+  }
+
+  /**
+   * Get MIME type by file extension
+   * @param $extension
+   * @param $filePath
+   * @return string
+   */
+  function getMimeTypeByExtension($extension, $filePath = NULL) {
+    $mimeTypes = [
+      'bmp' => 'image/bmp',
+      'csv' => 'text/csv',
+      'dmg' => 'application/x-apple-diskimage',
+      'doc' => 'application/msword',
+      'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'eps' => 'application/postscript',
+      'gif' => 'image/gif',
+      'html' => 'text/html',
+      'ics' => 'text/calendar',
+      'jpeg' => 'image/jpeg',
+      'jpg' => 'image/jpeg',
+      'mov' => 'video/quicktime',
+      'mp3' => 'audio/mpeg',
+      'mp4' => 'video/mp4',
+      'odf' => 'application/vnd.oasis.opendocument.formula',
+      'ogg' => 'audio/ogg',
+      'pdf' => 'application/pdf',
+      'pict' => 'image/x-pict',
+      'png' => 'image/png',
+      'ppt' => 'application/vnd.ms-powerpoint',
+      'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'rar' => 'application/x-rar-compressed',
+      'rtf' => 'application/rtf',
+      'sit' => 'application/x-stuffit',
+      'svg' => 'image/svg+xml',
+      'tar' => 'application/x-tar',
+      'tif' => 'image/tiff',
+      'txt' => 'text/plain',
+      'unknown' => 'application/octet-stream',
+      'xls' => 'application/vnd.ms-excel',
+      'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'xml' => 'application/xml',
+      'zip' => 'application/zip'
+    ];
+
+    $extension = strtolower($extension);
+    if (array_key_exists($extension, $mimeTypes)) {
+      $mimeType = $mimeTypes[$extension];
+    }
+    elseif ($filePath) {
+      $mimeType = self::getMimeType($filePath);
+    }
+    return $mimeType ?? 'application/octet-stream';
   }
 
   /**
