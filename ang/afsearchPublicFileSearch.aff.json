@@ -91,7 +91,7 @@
             },
             {
               "#tag": "af-field",
-              "name": "entity_table",
+              "name": "item_table",
               "defn": {
                 "input_attrs": {
                   "multiple": true

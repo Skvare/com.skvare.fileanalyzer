@@ -408,8 +408,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
         if (!empty($fileInUse['references'])) {
           $fileData['reference_type'] = $fileInUse['references']['reference_type'];
-          $fileData['entity_table'] = CRM_Utils_Array::value('entity_table', $fileInUse['references']);
-          $fileData['entity_id'] = CRM_Utils_Array::value('entity_id', $fileInUse['references']);
+          $fileData['item_table'] = CRM_Utils_Array::value('item_table', $fileInUse['references']);
+          $fileData['item_id'] = CRM_Utils_Array::value('item_id', $fileInUse['references']);
           $fileData['field_name'] = $fileInUse['references']['field_name'] ?? '';
           $fileData['reference_details'] = CRM_Utils_Array::value('details', $fileInUse['references']);
         }
@@ -532,7 +532,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
     // Step 2. Check civicrm_entity_file table for any attachment.
     $entityQuery = "
-        SELECT f.uri as filename, f.id as file_id, ef.entity_table, ef.entity_id
+        SELECT f.uri as filename, f.id as file_id, ef.entity_table as item_table, ef.entity_id as item_id
         FROM civicrm_file f
         INNER JOIN civicrm_entity_file ef ON f.id = ef.file_id
         WHERE f.uri IN ({$placeholderString})";
@@ -548,12 +548,12 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           // partial abandoned
           $filesInUse[$entityResult->filename]['is_table_reference'] = 0;
 
-          $entityTable = $entityResult->entity_table;
+          $entityTable = $entityResult->item_table;
           $reference_type = self::REFERENCE_FILE_RECORD;
           $fieldName = 'Attachment';
           // Map custom tables to core tables if applicable
           if (array_key_exists($entityTable, self::$customTableToCoreTable)) {
-            $entityTable = self::$customTableToCoreTable[$entityResult->entity_table];
+            $entityTable = self::$customTableToCoreTable[$entityResult->item_table];
             $reference_type = self::REFERENCE_CUSTOM_FIELD;
             $fieldName = self::$customFieldRecords[$entityResult->file_id]['field_label'];
           }
@@ -562,9 +562,9 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           }
           $filesInUse[$entityResult->filename]['references'] = [
             'reference_type' => $reference_type,
-            'entity_table' => $entityTable,
-            'entity_table_original' => $entityResult->entity_table,
-            'entity_id' => $entityResult->entity_id,
+            'item_table' => $entityTable,
+            'item_table_original' => $entityResult->item_table,
+            'item_id' => $entityResult->item_id,
             'field_name' => $fieldName,
             'details' => json_encode([
               'linked_through_file_id' => $entityResult->file_id,
@@ -591,8 +591,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
         $filesInUse[$filename]['references'] = [
           'reference_type' => self::REFERENCE_CUSTOM_FIELD,
-          'entity_table' => self::$customFieldRecords[$fileID]['entity_table'],
-          'entity_id' => self::$customFieldRecords[$fileID]['entity_id'],
+          'item_table' => self::$customFieldRecords[$fileID]['item_table'],
+          'item_id' => self::$customFieldRecords[$fileID]['item_id'],
           'field_name' => self::$customFieldRecords[$fileID]['field_label'],
           'details' => json_encode([
             'linked_through_file_id' => $fileID,
@@ -628,8 +628,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
             $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_CONTACT_IMAGE,
-              'entity_table' => 'civicrm_contact',
-              'entity_id' => $contactResult->id,
+              'item_table' => 'civicrm_contact',
+              'item_id' => $contactResult->id,
               'field_name' => 'image_URL',
               'details' => json_encode([
                 'image_url' => $contactResult->image_URL,
@@ -699,8 +699,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           if (!empty($foundIn)) {
             $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_CONTRIBUTION_PAGE,
-              'entity_table' => 'civicrm_contribution_page',
-              'entity_id' => $contributeResult->id,
+              'item_table' => 'civicrm_contribution_page',
+              'item_id' => $contributeResult->id,
               'field_name' => implode(',', $foundIn),
               'details' => json_encode([
                 'title' => $contributeResult->title,
@@ -750,8 +750,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
             $filesInUse[$filename]['is_table_reference'] = FALSE;
             $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_EVENT_PAGE,
-              'entity_table' => 'civicrm_event',
-              'entity_id' => $eventResult->id,
+              'item_table' => 'civicrm_event',
+              'item_id' => $eventResult->id,
               'field_name' => implode(',', $foundIn),
               'details' => json_encode([
                 'title' => $eventResult->title,
@@ -787,8 +787,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
             $filesInUse[$filename]['references'] = [
               'reference_type' => self::REFERENCE_MESSAGE_TEMPLATE,
-              'entity_table' => 'civicrm_msg_template',
-              'entity_id' => $templateResult->id,
+              'item_table' => 'civicrm_msg_template',
+              'item_id' => $templateResult->id,
               'field_name' => 'msg_html',
               'details' => json_encode([
                 'msg_title' => $templateResult->msg_title,
@@ -839,7 +839,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
         // Check entity file relationships
         $entityQuery = "
-          SELECT entity_table, entity_id
+          SELECT entity_table as item_table, entity_id as item_id
           FROM civicrm_entity_file
           WHERE file_id = %1
         ";
@@ -850,8 +850,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           $result['in_use'] = TRUE;
           $result['references'][] = [
             'reference_type' => self::REFERENCE_FILE_RECORD,
-            'entity_table' => self::$tableMapping[$entityResult->entity_table],
-            'entity_id' => $entityResult->entity_id,
+            'item_table' => self::$tableMapping[$entityResult->item_table],
+            'item_id' => $entityResult->item_id,
             'field_name' => 'Attachment',
             'details' => json_encode([
               'linked_through_file_id' => $fileResult->id,
@@ -862,8 +862,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           $result['in_use'] = TRUE;
           $result['references'][] = [
             'reference_type' => self::REFERENCE_CUSTOM_FIELD,
-            'entity_table' => self::$customFieldRecords[$fileResult->id]['entity_table'],
-            'entity_id' => self::$customFieldRecords[$fileResult->id]['entity_id'],
+            'item_table' => self::$customFieldRecords[$fileResult->id]['item_table'],
+            'item_id' => self::$customFieldRecords[$fileResult->id]['item_id'],
             'field_name' => self::$customFieldRecords[$fileResult->id]['field_label'],
             'details' => json_encode([
               'linked_through_file_id' => $fileResult->id,
@@ -887,8 +887,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
           $result['contact_id'] = $contactResult->id;
           $result['references'][] = [
             'reference_type' => self::REFERENCE_CONTACT_IMAGE,
-            'entity_table' => 'civicrm_contact',
-            'entity_id' => $contactResult->id,
+            'item_table' => 'civicrm_contact',
+            'item_id' => $contactResult->id,
             'field_name' => 'image_URL',
             'details' => json_encode([
               'image_url' => $contactResult->image_URL,
@@ -919,8 +919,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
         $result['references'][] = [
           'reference_type' => self::REFERENCE_CONTRIBUTION_PAGE,
-          'entity_table' => 'civicrm_contribution_page',
-          'entity_id' => $contributeResult->id,
+          'item_table' => 'civicrm_contribution_page',
+          'item_id' => $contributeResult->id,
           'field_name' => implode(',', $foundIn),
           'details' => json_encode([
             'title' => $contributeResult->title,
@@ -962,8 +962,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
 
         $result['references'][] = [
           'reference_type' => self::REFERENCE_EVENT_PAGE,
-          'entity_table' => 'civicrm_event',
-          'entity_id' => $eventResult->id,
+          'item_table' => 'civicrm_event',
+          'item_id' => $eventResult->id,
           'field_name' => implode(',', $foundIn),
           'details' => json_encode([
             'title' => $eventResult->title,
@@ -986,8 +986,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         $result['in_use'] = TRUE;
         $result['references'][] = [
           'reference_type' => self::REFERENCE_MESSAGE_TEMPLATE,
-          'entity_table' => 'civicrm_msg_template',
-          'entity_id' => $templateResult->id,
+          'item_table' => 'civicrm_msg_template',
+          'item_id' => $templateResult->id,
           'field_name' => 'msg_html',
           'details' => json_encode([
             'msg_title' => $templateResult->msg_title,
@@ -1329,7 +1329,7 @@ class CRM_Fileanalyzer_API_FileAnalysis {
   private static function getFieldType($fieldName) {
     $integerFields = [
       'id', 'file_id', 'file_size', 'is_abandoned', 'is_active',
-      'file_analyzer_id', 'entity_id', 'deleted_by', 'was_abandoned',
+      'file_analyzer_id', 'item_id', 'deleted_by', 'was_abandoned',
       'total_files_scanned', 'active_files', 'abandoned_files',
       'total_size', 'abandoned_size', 'scan_duration',
     ];
@@ -1495,8 +1495,8 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       'modified_date' => $fileDao->modified_date,
       'last_scanned_date' => $fileDao->last_scanned_date,
       'reference_type' => $fileDao->reference_type,
-      'entity_table' => $fileDao->entity_table,
-      'entity_id' => $fileDao->entity_id,
+      'item_table' => $fileDao->item_table,
+      'item_id' => $fileDao->item_id,
       'field_name' => $fileDao->field_name,
       'reference_details' => json_decode($fileDao->reference_details, TRUE),
     ];
@@ -1898,9 +1898,9 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       // Query to get file IDs and entity IDs from custom table
       $query = "
         SELECT 
-          ct.entity_id,
+          ct.entity_id as item_id,
           ct.{$columnName} as file_id,
-          '{$fieldInfo['extends']}' as entity_table
+          '{$fieldInfo['extends']}' as item_table
         FROM {$tableName} ct
         WHERE ct.{$columnName} IS NOT NULL
         AND ct.{$columnName} != ''
@@ -1916,9 +1916,9 @@ class CRM_Fileanalyzer_API_FileAnalysis {
         }
 
         $fileToEntityMap[$fileId] = [
-          'entity_id' => $dao->entity_id,
-          'entity_table' => self::mapExtendsToEntityTable($dao->entity_table),
-          //'entity_table' => $dao->entity_table,
+          'item_id' => $dao->item_id,
+          'item_table' => self::mapExtendsToEntityTable($dao->item_table),
+          //'item_table' => $dao->item_table,
           'field_id' => $fieldInfo['field_id'],
           'field_label' => $fieldInfo['field_label'],
           'custom_table' => $tableName,

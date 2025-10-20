@@ -758,7 +758,7 @@ class CRM_Fileanalyzer_Page_Preview extends CRM_Core_Page {
       if (!empty($references)) {
         foreach ($references as &$ref) {
           $entityQuery = "
-            SELECT ef.entity_table, ef.entity_id, ef.file_id
+            SELECT ef.item_table, ef.item_id, ef.file_id
             FROM civicrm_entity_file ef
             WHERE ef.file_id = %1
           ";
@@ -768,8 +768,8 @@ class CRM_Fileanalyzer_Page_Preview extends CRM_Core_Page {
           $ref['entities'] = [];
           while ($entityResult->fetch()) {
             $ref['entities'][] = [
-              'table' => $entityResult->entity_table,
-              'id' => $entityResult->entity_id,
+              'table' => $entityResult->item_table,
+              'id' => $entityResult->item_id,
             ];
           }
         }

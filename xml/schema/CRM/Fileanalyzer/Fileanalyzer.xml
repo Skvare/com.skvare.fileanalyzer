@@ -227,7 +227,7 @@
   </field>
 
   <field>
-    <name>entity_table</name>
+    <name>item_table</name>
     <type>varchar</type>
     <length>64</length>
     <comment>Related entity table name</comment>
@@ -241,7 +241,7 @@
   </field>
 
   <field>
-    <name>entity_id</name>
+    <name>item_id</name>
     <type>int unsigned</type>
     <comment>Related entity ID</comment>
     <html>
@@ -312,8 +312,8 @@
 
   <index>
     <name>index_entity</name>
-    <fieldName>entity_table</fieldName>
-    <fieldName>entity_id</fieldName>
+    <fieldName>item_table</fieldName>
+    <fieldName>item_id</fieldName>
   </index>
 
 </table>

@@ -29,9 +29,9 @@ return [
             'is_contact_file',
             'contact_id',
             'created_date',
-            'entity_table:label',
+            'item_table:label',
             'field_name',
-            'entity_id',
+            'item_id',
             'is_table_reference',
             'reference_type:label',
             'mime_type',
@@ -127,10 +127,10 @@ return [
             ],
             [
               'type' => 'html',
-              'key' => 'entity_table:label',
+              'key' => 'item_table:label',
               'label' => E::ts('Entity Table'),
               'sortable' => TRUE,
-              'rewrite' => '<span class="badge badge-dark">[entity_table:label]</span>
+              'rewrite' => '<span class="badge badge-dark">[item_table:label]</span>
 <span class="badge badge-success">[reference_type:label]</span>
 <span class="badge badge-danger">[field_name]</span>',
             ],
@@ -201,8 +201,8 @@ return [
             'is_contact_file',
             'contact_id',
             'created_date',
-            'entity_table:label',
-            'entity_id',
+            'item_table:label',
+            'item_id',
             'field_name',
             'reference_type:label',
           ],
@@ -285,10 +285,10 @@ return [
             ],
             [
               'type' => 'html',
-              'key' => 'entity_table:label',
+              'key' => 'item_table:label',
               'label' => E::ts('Entity Info'),
               'sortable' => TRUE,
-              'rewrite' => "{capture assign=entity_id}{\"[entity_id]\"}{/capture}\n\n{if \$entity_id}\t\n{capture assign=entity_table}{\"[entity_table:label]\"}{/capture}\n\n{if \$entity_table eq 'Contribution Page'}\n {capture assign=crmURL}{crmURL p='civicrm/admin/contribute/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Event'}\n {capture assign=crmURL}{crmURL p='civicrm/event/manage/settings' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{elseif \$entity_table eq 'Message Template'}\n {capture assign=crmURL}{crmURL p='civicrm/admin/messageTemplates/add' q=\"action=update&id=`\$entity_id`&reset=1\"}{/capture}\n{/if}\n\n<span><a target=\"_blank\" href=\"{\$crmURL}\">[entity_table:label]</a></span>\n<span>[field_name]</span>\n{/if}",
+              'rewrite' => "{capture assign=item_id}{\"[item_id]\"}{/capture}\n\n{if \$item_id}\t\n{capture assign=item_table}{\"[item_table:label]\"}{/capture}\n\n{if \$item_table eq 'Contribution Page'}\n {capture assign=crmURL}{crmURL p='civicrm/admin/contribute/settings' q=\"action=update&id=`\$item_id`&reset=1\"}{/capture}\n{elseif \$item_table eq 'Event'}\n {capture assign=crmURL}{crmURL p='civicrm/event/manage/settings' q=\"action=update&id=`\$item_id`&reset=1\"}{/capture}\n{elseif \$item_table eq 'Message Template'}\n {capture assign=crmURL}{crmURL p='civicrm/admin/messageTemplates/add' q=\"action=update&id=`\$item_id`&reset=1\"}{/capture}\n{/if}\n\n<span><a target=\"_blank\" href=\"{\$crmURL}\">[item_table:label]</a></span>\n<span>[field_name]</span>\n{/if}",
             ],
             [
               'links' => [

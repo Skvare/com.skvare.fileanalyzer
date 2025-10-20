@@ -55,8 +55,8 @@ CREATE TABLE `civicrm_file_analyzer` (
   `is_contact_file` tinyint DEFAULT 0 COMMENT 'Flag indicating if file is belong contact image',
   `contact_id` int unsigned COMMENT 'FK to Contact',
   `reference_type` varchar(50) COMMENT 'Type: file_record, contact_image, contribution_page, message_template, custom_field',
-  `entity_table` varchar(64) COMMENT 'Related entity table name',
-  `entity_id` int unsigned COMMENT 'Related entity ID',
+  `item_table` varchar(64) COMMENT 'Related entity table name',
+  `item_id` int unsigned COMMENT 'Related entity ID',
   `field_name` varchar(100) COMMENT 'Field name where file is referenced',
   `reference_details` text COMMENT 'JSON with additional reference metadata',
   PRIMARY KEY (`id`),
@@ -67,7 +67,7 @@ CREATE TABLE `civicrm_file_analyzer` (
   INDEX `index_scan_status`(scan_status),
   INDEX `index_modified_date`(modified_date),
   INDEX `index_reference_type`(reference_type),
-  INDEX `index_entity`(entity_table, entity_id),
+  INDEX `index_item`(item_table, item_id),
   CONSTRAINT FK_civicrm_file_analyzer_file_id FOREIGN KEY (`file_id`) REFERENCES `civicrm_file`(`id`) ON DELETE SET NULL,
   CONSTRAINT FK_civicrm_file_analyzer_contact_id FOREIGN KEY (`contact_id`) REFERENCES `civicrm_contact`(`id`) ON DELETE SET NULL)
 ENGINE=InnoDB;
