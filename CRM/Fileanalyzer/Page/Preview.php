@@ -25,10 +25,13 @@ class CRM_Fileanalyzer_Page_Preview extends CRM_Core_Page {
       // Fetch entity details based on the item_table and item_id
       $entityDetails = $this->getEntityDetails($fileDetails['item_table'], $fileDetails['item_id']);
       // Fetch contact details if contact_id is present
-      $contactDetails = $fileDetails['contact_id']
-        ? $this->getContactDetails($fileDetails['contact_id'])
-        : NULL;
-      // echo '<pre>'; print_r($entityDetails);
+      if ($fileDetails['item_table'] == 'civicrm_contact') {
+        $contactDetails = $entityDetails;
+      }
+      else {
+        $contactDetails = $fileDetails['contact_id']
+          ? $this->getContactDetails($fileDetails['contact_id']) : NULL;
+      }
       // Assign variables to the template
       $this->assign('fileInfo', $fileDetails);
       $this->assign('entityDetails', $entityDetails);
