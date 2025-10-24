@@ -613,28 +613,47 @@ class CRM_Fileanalyzer_API_FileAnalysis {
       while ($contactResult->fetch()) {
         $imageUrl = $contactResult->image_URL;
 
-        // Check each filename in the batch against this image URL
-        foreach ($batch as $filename) {
-          // Check if filename appears in the URL in any of these formats:
-          // 1. As query parameter: ?photo=filename.jpg
-          // 2. In path: /files/civicrm/custom/filename.jpg
-          // 3. Direct match
-          if (str_contains($imageUrl, $filename)) {
-            $filesInUse[$filename]['in_use'] = 1;
-            $filesInUse[$filename]['is_contact_file'] = TRUE;
-            // if file is linked through civicrm_entity_file, it's not
-            // partial abandoned
-            $filesInUse[$filename]['is_table_reference'] = 0;
+        // Extract filename from the URL
+        $extractedFilename = '';
 
-            $filesInUse[$filename]['references'] = [
-              'reference_type' => self::REFERENCE_CONTACT_IMAGE,
-              'item_table' => 'civicrm_contact',
-              'item_id' => $contactResult->id,
-              'field_name' => 'image_URL',
-              'details' => json_encode([
-                'image_url' => $contactResult->image_URL,
-              ]),
-            ];
+        // Handle different URL formats
+        if (preg_match('/[?&]photo=([^&]+)/', $imageUrl, $matches)) {
+          // Format: ?photo=filename.jpg or &photo=filename.jpg
+          $extractedFilename = urldecode($matches[1]);
+        }
+        elseif (preg_match('/private:\/\/webform\/(.+)$/', $imageUrl, $matches)) {
+          // Format: private://webform/filename.pdf
+          $extractedFilename = urldecode($matches[1]);
+        }
+        elseif (preg_match('/\/([^\/]+\.[a-zA-Z0-9]+)$/', $imageUrl, $matches)) {
+          // Format: https://domain.com/path/to/filename.jpg
+          // Extract last segment after final slash that contains a file extension
+          $extractedFilename = urldecode($matches[1]);
+        }
+
+        // If we successfully extracted a filename, check against batch
+        if (!empty($extractedFilename)) {
+          foreach ($batch as $filename) {
+            // Exact match comparison
+            if ($extractedFilename === $filename) {
+              $filesInUse[$filename]['in_use'] = 1;
+              $filesInUse[$filename]['is_contact_file'] = TRUE;
+              // if file is linked through civicrm_entity_file, it's not
+              // partial abandoned
+              $filesInUse[$filename]['is_table_reference'] = 0;
+
+              $filesInUse[$filename]['references'] = [
+                'reference_type' => self::REFERENCE_CONTACT_IMAGE,
+                'item_table' => 'civicrm_contact',
+                'item_id' => $contactResult->id,
+                'field_name' => 'image_URL',
+                'details' => json_encode([
+                  'image_url' => $contactResult->image_URL,
+                ]),
+              ];
+              // Found match, no need to check other filenames for this URL
+              break;
+            }
           }
         }
       }
